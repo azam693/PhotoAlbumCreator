@@ -34,7 +34,7 @@ Run PhotoAlbumGen with one of the following commands:
   - script.js;
   - appsettings.json (settings; if absent, an embedded default is used);
 
-- <Album>/
+- `<Album>`/
   - Files/ (place your photos/videos here);
   - index.html;
 

@@ -1,4 +1,4 @@
-PhotoAlbumGen — a console utility for creating standalone photo albums.
+*PhotoAlbumGen* — a console utility for creating standalone photo albums.
 
 # Purpose
 

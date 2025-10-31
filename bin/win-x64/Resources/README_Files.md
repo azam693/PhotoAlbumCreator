@@ -1,0 +1,1 @@
+Place your photos and videos here (for example, IMG_001.jpg, VID_001.mp4).

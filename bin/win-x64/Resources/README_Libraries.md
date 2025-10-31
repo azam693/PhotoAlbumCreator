@@ -1,4 +1,4 @@
-﻿PhotoAlbumGen — a console utility for creating standalone photo albums.
+﻿**PhotoAlbumGen** — a console utility for creating standalone photo albums.
 
 # Purpose
 
@@ -34,16 +34,16 @@ Run PhotoAlbumGen with one of the following commands:
   - script.js;
   - appsettings.json (settings; if absent, an embedded default is used);
 
-<Album>/
+- `<Album>`/
   - Files/ (place your photos/videos here);
   - index.html;
 
 # Supported file formats
 
-  - Photos: .jpg .jpeg .png .gif .webp .bmp .tiff;
-  - Videos: .mp4 .webm .mov .m4v .avi .mkv;
+- Photos: .jpg .jpeg .png .gif .webp .bmp .tiff
+- Videos: .mp4 .webm .mov .m4v .avi .mkv
 
 # Notes
 
-  - All generated files use UTF-8 encoding; `index.html` contains `<meta charset="utf-8">`;
-  - Native AOT is for Release publishing only;
+- All generated files use UTF-8 encoding; `index.html` contains `<meta charset="utf-8">`;
+- For development use Debug (F5). Native AOT is for Release publishing only;

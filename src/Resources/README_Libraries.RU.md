@@ -34,16 +34,16 @@
 	- script.js;
 	- appsettings.json (настройки; при отсутствии берётся встроенный дефолт);
 
-<Альбом>/
+- `<Альбом>`/
 	- Files/ (положите фото/видео сюда)
 	- index.html
 
 # Поддерживаемые форматы файлов
 
-  - Фото: .jpg .jpeg .png .gif .webp .bmp .tiff;
-  - Видео: .mp4 .webm .mov .m4v .avi .mkv;
+- Фото: .jpg .jpeg .png .gif .webp .bmp .tiff;
+- Видео: .mp4 .webm .mov .m4v .avi .mkv;
 
 # Примечания
 
-  - Все создаваемые файлы имеют кодировку UTF-8; в HTML указан <meta charset="utf-8">;
-  - Native AOT — только для Release публикации;
+- Все создаваемые файлы имеют кодировку UTF-8; в HTML указан <meta charset="utf-8">;
+- Native AOT — только для Release публикации;

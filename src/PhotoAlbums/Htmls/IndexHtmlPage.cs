@@ -55,7 +55,8 @@ public sealed class IndexHtmlPage
         BuildHeader();
         BuildItems();
 
-        _htmlBuilder = new StringBuilder(HtmlPrettifier.Format(Html));
+        var htmlPrettifier = new HtmlPrettifier();
+        _htmlBuilder = new StringBuilder(htmlPrettifier.Format(Html));
     }
 
     private void BuildHeader()

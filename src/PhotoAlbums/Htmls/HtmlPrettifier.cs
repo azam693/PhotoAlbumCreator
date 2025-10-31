@@ -1,134 +1,188 @@
-﻿using System;
+﻿using PhotoAlbumCreator.Common;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace PhotoAlbumCreator.PhotoAlbums.Htmls;
 
-public static class HtmlPrettifier
+public class HtmlPrettifier
 {
-    // Список «пустых» (void) элементов HTML5, не влияющих на уровень отступа
+    private const string CRLF = "\r\n";
+    private const string LF = "\n";
+
+    // List of “void” HTML5 elements that do not affect indentation level
     private static readonly HashSet<string> VoidTags = new(StringComparer.OrdinalIgnoreCase)
     {
         "area","base","br","col","embed","hr","img","input","link","meta",
         "param","source","track","wbr"
     };
 
-    // Токенайзер: комментарии/doctype, блоки script|style|pre|textarea, теги, текст
+    // Tokenizer: comment/doctype tokens, script | style | pre | textarea content blocks, tag tokens, text tokens
     private static readonly Regex Tokenizer = new(
         @"(?is)(
-            <!--.*?-->                          # comment
-          | <!DOCTYPE.*?>                      # doctype
+            <!--.*?-->                                     # comment
+          | <!DOCTYPE.*?>                                  # doctype
           | <(script|style|pre|textarea)\b.*?>.*?</\1\s*>  # raw blocks
-          | </?[^>]+?>                         # any tag
-          | [^<]+                              # text
+          | </?[^>]+?>                                     # any tag
+          | [^<]+                                          # text
         )",
         RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace);
 
-    public static string Format(string html, string indent = "  ")
+    private readonly string _indent;
+
+    public HtmlPrettifier(int indentCount = 2)
     {
-        if (string.IsNullOrWhiteSpace(html)) return string.Empty;
-
-        var sb = new StringBuilder(html.Length + html.Length / 8);
-        int level = 0;
-
-        foreach (Match m in Tokenizer.Matches(html))
+        if (indentCount < 0)
         {
-            string tok = m.Value;
+            throw new AlbumException("Indent count cannot be negative.");
+        }
 
-            if (IsCommentOrDoctype(tok))
+        _indent = new string(' ', indentCount);
+    }
+
+    public string Format(string html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+            return string.Empty;
+
+        int level = 0;
+        var htmlBuilder = new StringBuilder(html.Length + html.Length / 8);
+
+        foreach (Match matched in Tokenizer.Matches(html))
+        {
+            var token = matched.Value;
+
+            if (IsCommentOrDoctype(token))
             {
-                WriteLine(sb, level, tok.TrimEnd());
+                WriteLine(htmlBuilder, level, token.TrimEnd());
                 continue;
             }
 
-            if (IsRawBlock(tok)) // script/style/pre/textarea — как есть
+            // script/style/pre/textarea — as it is
+            if (IsRawBlock(token))
             {
-                WriteRawBlock(sb, level, tok, indent);
+                WriteRawBlock(htmlBuilder, level, token);
                 continue;
             }
 
-            if (IsTag(tok))
+            if (IsTag(token))
             {
-                string tagName = GetTagName(tok);
-
-                if (IsClosingTag(tok))
+                var tagName = GetTagName(token);
+                if (IsClosingTag(token))
                 {
                     level = Math.Max(0, level - 1);
-                    WriteLine(sb, level, tok.Trim());
+                    WriteLine(htmlBuilder, level, token.Trim());
                 }
-                else if (IsSelfClosing(tok) || VoidTags.Contains(tagName))
+                else if (IsSelfClosing(token) || VoidTags.Contains(tagName))
                 {
-                    WriteLine(sb, level, tok.Trim());
+                    WriteLine(htmlBuilder, level, token.Trim());
                 }
                 else
                 {
-                    WriteLine(sb, level, tok.Trim());
-                    level++; // увеличить после открывающего
+                    WriteLine(htmlBuilder, level, token.Trim());
+                    // Increase after open tag
+                    level++;
                 }
             }
             else
             {
-                // Текст: если он «пустой»/пробельный — пропускаем лишнее
-                var text = tok.Replace("\r\n", "\n");
-                if (string.IsNullOrWhiteSpace(text)) continue;
+                // Text: if it is “empty”/whitespace — skip the excess
+                var text = token.Replace(CRLF, LF);
+                if (string.IsNullOrWhiteSpace(text))
+                    continue;
 
-                // Нормализуем переносы внутри текста
-                foreach (var line in text.Split('\n'))
+                // Normalize line breaks inside text
+                foreach (var line in text.Split(LF))
                 {
                     var t = line.TrimEnd();
-                    if (t.Length == 0) continue;
-                    WriteLine(sb, level, t);
+                    if (t.Length == 0)
+                        continue;
+
+                    WriteLine(htmlBuilder, level, t);
                 }
             }
         }
 
-        return sb.ToString().Replace("\r\n", "\n"); // единый стиль перевода строк
+        return htmlBuilder
+            .ToString()
+            .Replace(CRLF, LF);
     }
 
-    private static void WriteLine(StringBuilder sb, int level, string content)
+    private void WriteLine(StringBuilder htmlBuilder, int level, string content)
     {
-        for (int i = 0; i < level; i++) sb.Append("  "); // по умолчанию 2 пробела; можно вынести параметром
-        sb.AppendLine(content);
+        // 2 spaces by default; can be exposed as a parameter
+        for (int i = 0; i < level; i++)
+        {
+            htmlBuilder.Append(_indent);
+        }
+
+        htmlBuilder.AppendLine(content);
     }
 
-    private static bool IsTag(string s) => s.Length > 1 && s[0] == '<' && s[^1] == '>';
-    private static bool IsClosingTag(string s) => s.StartsWith("</");
-    private static bool IsSelfClosing(string s) => s.EndsWith("/>") || s.EndsWith(" />");
-    private static bool IsCommentOrDoctype(string s) =>
-        s.StartsWith("<!--") || s.StartsWith("<!DOCTYPE", StringComparison.OrdinalIgnoreCase);
-    private static bool IsRawBlock(string s) =>
-        Regex.IsMatch(s, @"^(?is)<(script|style|pre|textarea)\b");
+    private void WriteRawBlock(StringBuilder htmlBuilder, int level, string block)
+    {
+        // Move the entire block, but shift the first line and the inner lines
+        var lines = block
+            .Replace(CRLF, LF)
+            .Split(LF);
+        if (lines.Length == 1)
+        {
+            WriteLine(htmlBuilder, level, lines[0]);
+            return;
+        }
+
+        // First line
+        WriteLine(htmlBuilder, level, lines[0]);
+
+        // In the middle — add +1 indentation level
+        for (int i = 1; i < lines.Length - 1; i++)
+        {
+            var text = lines[i];
+            for (int j = 0; j < level + 1; j++)
+            {
+                htmlBuilder.Append(_indent);
+            }
+
+            htmlBuilder.AppendLine(text);
+        }
+
+        WriteLine(htmlBuilder, level, lines[^1]);
+    }
+
+    private static bool IsTag(string token)
+    {
+        return token.Length > 1 && token[0] == '<' && token[^1] == '>';
+    }
+
+    private static bool IsClosingTag(string token)
+    {
+        return token.StartsWith("</");
+    }
+
+    private static bool IsSelfClosing(string token)
+    {
+        return token.EndsWith("/>") || token.EndsWith(" />");
+    }
+
+    private static bool IsCommentOrDoctype(string token)
+    {
+        return token.StartsWith("<!--")
+            || token.StartsWith("<!DOCTYPE", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsRawBlock(string s)
+    {
+        return Regex.IsMatch(s, @"^(?is)<(script|style|pre|textarea)\b");
+    }
 
     private static string GetTagName(string tag)
     {
         // <tag ...> / </tag>
-        var m = Regex.Match(tag, @"^</?\s*([a-zA-Z0-9:-]+)");
-        return m.Success ? m.Groups[1].Value : "";
-    }
+        var matchedTag = Regex.Match(tag, @"^</?\s*([a-zA-Z0-9:-]+)");
 
-    private static void WriteRawBlock(StringBuilder sb, int level, string block, string indent)
-    {
-        // Переносим блок целиком, но подвинем первую строку и внутренние строки
-        var lines = block.Replace("\r\n", "\n").Split('\n');
-        if (lines.Length == 1)
-        {
-            WriteLine(sb, level, lines[0]);
-            return;
-        }
-
-        // первая строка
-        WriteLine(sb, level, lines[0]);
-
-        // середина — добавим +1 уровень отступа
-        for (int i = 1; i < lines.Length - 1; i++)
-        {
-            var t = lines[i];
-            for (int j = 0; j < level + 1; j++) sb.Append("  ");
-            sb.AppendLine(t);
-        }
-
-        // последняя строка
-        WriteLine(sb, level, lines[^1]);
+        return matchedTag.Success
+            ? matchedTag.Groups[1].Value
+            : string.Empty;
     }
 }

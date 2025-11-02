@@ -46,4 +46,4 @@ Run PhotoAlbumGen with one of the following commands:
 # Notes
 
 - All generated files use UTF-8 encoding; `index.html` contains `<meta charset="utf-8">`;
-- For development use Debug (F5). Native AOT is for Release publishing only;
+- Native AOT is for Release publishing only;

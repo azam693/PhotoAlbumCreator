@@ -21,22 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Resources\**\*">
-      <Link>Resources\%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Update="Resources\1.jpg" Link="Resources\1.jpg" />
-    <Content Update="Resources\2.jpg" Link="Resources\2.jpg" />
-    <Content Update="Resources\3.jpg" Link="Resources\3.jpg" />
-    <Content Update="Resources\4.jpg" Link="Resources\4.jpg" />
-    <Content Update="Resources\5.jpg" Link="Resources\5.jpg" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\PhotoAlbumCreator\PhotoAlbumCreator.csproj" />
   </ItemGroup>
 

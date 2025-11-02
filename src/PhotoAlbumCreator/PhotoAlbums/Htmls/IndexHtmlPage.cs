@@ -53,6 +53,7 @@ public sealed class IndexHtmlPage
             return;
 
         BuildHeader();
+        BuildControls();
         BuildItems();
 
         var htmlPrettifier = new HtmlPrettifier();
@@ -68,6 +69,16 @@ public sealed class IndexHtmlPage
             .Replace("{{createdAtIso}}", firstMediaFile.GetCreatedAtISO())
             .Replace("{{createdAtHuman}}", firstMediaFile.GetCreatedAtHuman())
             .Replace("{{published}}", _localizationSettings.Published);
+    }
+
+    private void BuildControls()
+    {
+        _htmlBuilder
+            .Replace("{{mediaView}}", _localizationSettings.MediaView)
+            .Replace("{{closeMediaView}}", _localizationSettings.CloseMediaView)
+            .Replace("{{scaleMediaView}}", _localizationSettings.ScaleMediaView)
+            .Replace("{{fullScreenMediaView}}", _localizationSettings.FullScreenMediaView)
+            .Replace("{{switchImageMediaView}}", _localizationSettings.SwitchImageMediaView);
     }
 
     private void BuildItems()

@@ -24,29 +24,29 @@
     </section>
   </div>
 
-  <section id="lightbox" class="lightbox" aria-hidden="true" aria-label="Просмотр медиа">
+  <section id="lightbox" class="lightbox" aria-hidden="true" aria-label="{{mediaView}}">
     <div class="lb-toolbar">
-      <button class="lb-btn close" title="Закрыть (Esc)">
+      <button class="lb-btn close" title="{{closeMediaView}} (Esc)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" d="M18 6 6 18M6 6l12 12"/></svg>
-        Закрыть <span class="kbd">Esc</span>
+        {{closeMediaView}} <span class="kbd">Esc</span>
       </button>
-      <button class="lb-btn fit" title="Вписать/по размеру (F)">
+      <button class="lb-btn fit" title="{{scaleMediaView}} (F)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></svg>
-        Масштаб <span class="kbd">F</span>
+        {{scaleMediaView}} <span class="kbd">F</span>
       </button>
-      <button class="lb-btn fs" title="Полноэкранный режим">
+      <button class="lb-btn fs" title="{{fullScreenMediaView}}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" d="M7 14H5v5h5v-2H7v-3zm12-9h-5v2h3v3h2V5zM7 7h3V5H5v5h2V7zm10 7v3h-3v2h5v-5h-2z"/></svg>
-        На весь экран
+        {{fullScreenMediaView}}
       </button>
       <div class="lb-spacer"></div>
-      <div class="lb-hint"><span class="kbd">←</span> / <span class="kbd">→</span> — переключение</div>
+      <div class="lb-hint"><span class="kbd">←</span> / <span class="kbd">→</span> — {{switchImageMediaView}}</div>
     </div>
     <div class="lb-stage">
       <div class="lb-nav">
-        <button class="lb-arrow prev" aria-label="Предыдущее">
+        <button class="lb-arrow prev" aria-label="Next">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6" stroke-width="2"/></svg>
         </button>
-        <button class="lb-arrow next" aria-label="Следующее">
+        <button class="lb-arrow next" aria-label="Previous">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6" stroke-width="2"/></svg>
         </button>
       </div>

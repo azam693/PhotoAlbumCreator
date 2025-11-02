@@ -35,4 +35,14 @@ public sealed record LocalizationSettings
     public string Published { get; init; } = "Published";
 
     public string Help { get; init; } = "Help";
+
+    public string MediaView { get; init; } = "MediaView";
+
+    public string CloseMediaView { get; init; } = "CloseMediaView";
+
+    public string ScaleMediaView { get; init; } = "ScaleMediaView";
+
+    public string FullScreenMediaView { get; init; } = "FullScreenMediaView";
+
+    public string SwitchImageMediaView { get; init; } = "SwitchImageMediaView";
 }

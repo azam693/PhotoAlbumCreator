@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Example</title>
+  <link rel="preload" href="styles.css" as="style">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <h1 class="title">Example</h1>
+      <div class="meta">Published: <time datetime="2025-01-01">1 January 2025</time></div>
+    </div>
+  </header>
+
+  <div class="container">
+    <section id="gallery">
+		<div class="group">
+			<div class="photos">
+				<article class="card" data-type="image" data-src="Files/1.jpg">
+					<a class="media" href="Files/1.jpg">
+						<img src="Files/1.jpg" loading="lazy" />
+					</a>
+				</article>
+				<article class="card" data-type="image" data-src="Files/2.jpg">
+					<a class="media" href="Files/2.jpg">
+						<img src="Files/2.jpg" loading="lazy" />
+					</a>
+				</article>
+				<article class="card" data-type="image" data-src="Files/3.jpg">
+					<a class="media" href="Files/3.jpg">
+						<img src="Files/3.jpg" loading="lazy" />
+					</a>
+				</article>
+				<article class="card" data-type="image" data-src="Files/4.jpg">
+					<a class="media" href="Files/4.jpg">
+						<img src="Files/4.jpg" loading="lazy" />
+					</a>
+				</article>
+				<article class="card" data-type="image" data-src="Files/5.jpg">
+					<a class="media" href="Files/5.jpg">
+						<img src="Files/5.jpg" loading="lazy" />
+					</a>
+				</article>
+			</div>
+			<div class="story">
+				<p>Comment for pictures</p>
+			</div>
+		</div>
+    </section>
+  </div>
+
+  <section id="lightbox" class="lightbox" aria-hidden="true" aria-label="Просмотр медиа">
+    <div class="lb-toolbar">
+      <button class="lb-btn close" title="Close (Esc)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" d="M18 6 6 18M6 6l12 12"/></svg>
+        Close <span class="kbd">Esc</span>
+      </button>
+      <button class="lb-btn fit" title="Scale (F)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></svg>
+        Scale <span class="kbd">F</span>
+      </button>
+      <button class="lb-btn fs" title="FullScreen">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" d="M7 14H5v5h5v-2H7v-3zm12-9h-5v2h3v3h2V5zM7 7h3V5H5v5h2V7zm10 7v3h-3v2h5v-5h-2z"/></svg>
+        Full screen
+      </button>
+      <div class="lb-spacer"></div>
+      <div class="lb-hint"><span class="kbd">←</span> / <span class="kbd">→</span> — switching</div>
+    </div>
+    <div class="lb-stage">
+      <div class="lb-nav">
+        <button class="lb-arrow prev" aria-label="Previous">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6" stroke-width="2"/></svg>
+        </button>
+        <button class="lb-arrow next" aria-label="Next">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6" stroke-width="2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="lb-counter">
+      <span class="count">1</span>/<span class="total">1</span>
+    </div>
+  </section>
+</body>
+</html>

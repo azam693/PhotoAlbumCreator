@@ -1,0 +1,425 @@
+/* ======================================
+   Базовые переменные темы
+   ====================================== */
+:root {
+  --bg: #f7f8fb;
+  --panel: #ffffff;
+  --text: #1d232b;
+  --muted: #586273;
+  --accent: #3b82f6;
+  --card: #ffffff;
+  --card-hover: #fafbff;
+  --border: #e5e9f0;
+  --shadow: 0 6px 24px rgba(17, 24, 39, 0.08);
+  --radius: 16px;
+  --gap: 16px;
+}
+
+/* Нормализация и базовая типографика */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ====== Header ====== */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: saturate(140%) blur(8px);
+  background: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #93c5fd, #60a5fa 60%, #818cf8);
+  box-shadow: 0 8px 30px rgba(96, 165, 250, 0.35);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(20px, 2.2vw, 30px);
+  letter-spacing: 0.2px;
+}
+
+.meta {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ====== Container ====== */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+/* ====== Grouped layout ====== */
+#gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.group {
+  display: block;
+}
+
+.group .story {
+  display: block;
+  width: 100%;
+  margin: 12px 0;
+  padding: 18px 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.group .story h3 {
+  margin: 0.2em 0 0.4em;
+  font-size: 18px;
+}
+
+.group .story p {
+  margin: 0.4em 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* Сетка фотографий: 12-колоночная; максимум 4 карточки в ряд */
+.photos {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+/* По умолчанию каждая карточка = 3 колонки (4 в ряд) */
+.photos > .card { grid-column: span 3; }
+
+/* Растягивание последней строки — равномерное заполнение */
+.photos > .card._last-1 { grid-column: span 12; } /* 1 элемент */
+.photos > .card._last-2 { grid-column: span 6; }  /* 2 элемента */
+.photos > .card._last-3 { grid-column: span 4; }  /* 3 элемента */
+
+/* Адаптив: кратно уменьшаем сетку */
+@media (max-width: 980px) {
+  .photos { grid-template-columns: repeat(6, 1fr); }
+  .photos > .card { grid-column: span 3; } /* 2 в ряд */
+  .photos > .card._last-1 { grid-column: span 6; }
+  .photos > .card._last-2 { grid-column: span 3; }
+  .photos > .card._last-3 { grid-column: span 2; }
+}
+
+@media (max-width: 560px) {
+  .photos { grid-template-columns: repeat(1, 1fr); }
+  .photos > .card,
+  .photos > .card._last-1,
+  .photos > .card._last-2,
+  .photos > .card._last-3 { grid-column: span 1; }
+}
+
+/* Карточки медиа *//* Карточки медиа */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  background: var(--card-hover);
+  box-shadow: var(--shadow);
+}
+
+.media {
+  position: relative;
+  display: block;
+}
+.media img,
+.media video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #f1f5f9;
+  max-height: 500px; /* максимум высоты превью */
+}
+.badges {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.badge svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.85;
+}
+
+.caption {
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+  border-top: 1px solid var(--border);
+}
+
+/* ====== Lightbox ====== */
+.lightbox[aria-hidden="true"] {
+  display: none;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(17, 24, 39, 0.85);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.lb-toolbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+}
+
+.lb-spacer {
+  flex: 1;
+}
+
+.lb-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+}
+
+.lb-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.lb-stage {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.lb-media {
+  max-width: 94vw;
+  max-height: 86vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  user-select: none;
+  touch-action: none;
+}
+
+.lb-counter {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e5e7eb;
+  font-size: 14px;
+  padding-bottom: 10px;
+}
+
+.lb-nav {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lb-arrow {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  margin: 0 12px;
+  cursor: pointer;
+}
+
+.lb-arrow:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.kbd {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: #fff;
+}
+
+/* ====== Virtualization helpers ====== */
+.media--placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #eef2f7;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.card[data-state="unloaded"] .caption {
+  opacity: 0.75;
+}
+
+/* Центральная кнопка Play на превью */
+.card[data-type="video"] .media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none; /* не мешает клику по карточке */
+  background:
+    radial-gradient(
+      closest-side,
+      rgba(0, 0, 0, 0.25),
+      rgba(0, 0, 0, 0) 65%
+    )
+    center / 160% 160% no-repeat; /* мягкое затемнение */
+}
+
+/* собственно «кнопка» play */
+.card[data-type="video"] .media::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 68px;
+  height: 68px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  -webkit-mask: conic-gradient(from 0turn, #000 0 0) no-repeat; /* сглаживание краёв в Safari */
+}
+
+/* рисуем треугольник play через отдельный элемент */
+.card[data-type="video"] .media span.play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  border: solid transparent;
+  border-width: 14px 0 14px 22px; /* треугольник */
+  border-left-color: #1f2937; /* тёмный «play» */
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.15));
+  pointer-events: none;
+}
+
+/* «Лента» в правом верхнем углу */
+.card[data-type="video"] .media::marker {
+  content: "";
+} /* для совместимости некоторых движков */
+
+.card[data-type="video"] .media .video-ribbon {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  pointer-events: none;
+  backdrop-filter: saturate(130%) blur(2px);
+}
+
+/* Состояния при наведении/фокусе */
+.card[data-type="video"]:hover .media::before {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.card[data-type="video"]:hover .media::after {
+  background:
+    radial-gradient(
+      closest-side,
+      rgba(0, 0, 0, 0.35),
+      rgba(0, 0, 0, 0) 65%
+    )
+    center / 160% 160% no-repeat;
+}
+
+/* Фон для превью видео (если кадра нет) */
+.card[data-type="video"] .media video {
+  background: #eef2f7;
+}

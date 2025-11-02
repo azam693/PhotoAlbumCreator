@@ -1,10 +1,12 @@
 **PhotoAlbumGen** — a console utility for creating standalone photo albums.
 
+You can take a look at the example [here](https://azam693.github.io/PhotoAlbumCreator/).
+
 # Purpose
 
-Creates a shared `System` folder with settings and scripts.  
-Creates new albums: `<AlbumName>/Files/` + `index.html`.  
-Fills `index.html` with photo/video cards from the `Files` folder.
+- Creates a shared `System` folder with settings and scripts;
+- Creates new albums: `<AlbumName>/Files/` + `index.html`;
+- Fills `index.html` with photo/video cards from the `Files` folder;
 
 # Usage
 

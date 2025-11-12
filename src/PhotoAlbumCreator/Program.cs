@@ -2,6 +2,9 @@ using PhotoAlbumCreator.AlbumLibraries;
 using PhotoAlbumCreator.Common;
 using PhotoAlbumCreator.Common.Settings;
 using PhotoAlbumCreator.PhotoAlbums;
+using PhotoAlbumCreator.PhotoAlbums.Videos;
+using PhotoAlbumCreator.PhotoAlbums.Videos.Compressors;
+using PhotoAlbumCreator.PhotoAlbums.Videos.Compressors.FFmpeg;
 using System;
 using System.Globalization;
 using System.Linq;
@@ -12,6 +15,7 @@ internal static class Program
     public const string CreateAlbumLibrary = "init";
     public const string CreatePhotoAlbum = "new";
     public const string FillPhotoAlbum = "fill";
+    public const string Compress = "compress";
     public const string Help = "help";
 
     public const string ForceParameter = "--force";
@@ -50,6 +54,7 @@ internal static class Program
 
         try
         {
+            var processRunner = new ProcessRunner();
             var albumLibraryService = new AlbumLibraryService(resource, appSettingsProvider);
             var photoAlbumService = new PhotoAlbumService(resource, appSettingsProvider, albumLibraryService);
             switch (commands[0])
@@ -63,6 +68,12 @@ internal static class Program
                     break;
                 case FillPhotoAlbum:
                     photoAlbumService.Fill();
+                    break;
+                case Compress:
+                    var compressor = new FFmpegCompressor(processRunner, appSettings.FFmpeg);
+                    var videoCompressor = new VideoCompressor(compressor, appSettings.Localization);
+                    var videoService = new VideoService(videoCompressor, appSettingsProvider);
+                    videoService.Compress();
                     break;
                 case Help:
                 case $"--{Help}":
@@ -78,7 +89,7 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            Console.WriteLine(localization.Error + ex.Message);
+            Console.WriteLine(string.Format(localization.Error, ex.Message));
             return 3;
         }
     }

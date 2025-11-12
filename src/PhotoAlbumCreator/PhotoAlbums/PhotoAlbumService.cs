@@ -2,6 +2,8 @@
 using PhotoAlbumCreator.Common;
 using PhotoAlbumCreator.Common.Settings;
 using PhotoAlbumCreator.PhotoAlbums.Htmls;
+using PhotoAlbumCreator.PhotoAlbums.Photos;
+using PhotoAlbumCreator.PhotoAlbums.Videos;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -108,8 +110,8 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         foreach (var fileInfo in directoryInfo.EnumerateFiles("*", SearchOption.TopDirectoryOnly))
         {
             var extension = fileInfo.Extension.ToLowerInvariant();
-            bool isImage = photoAlbum.IsImageExtension(extension);
-            bool isVideo = photoAlbum.IsVideoExtension(extension);
+            bool isImage = Photo.IsSupportedExtension(extension);
+            bool isVideo = Video.IsSupportedExtension(extension);
             if (!isImage && !isVideo)
                 continue;
 

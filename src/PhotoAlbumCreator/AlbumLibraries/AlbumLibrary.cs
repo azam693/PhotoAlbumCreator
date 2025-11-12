@@ -65,7 +65,7 @@ public sealed class AlbumLibrary
     {
         ArgumentNullException.ThrowIfNull(appSettings);
 
-        var albumSettingsJson = new AppSettings(null, null, appSettings.IndexHtml);
+        var albumSettingsJson = new AppSettings(null, null, appSettings.IndexHtml, appSettings.FFmpeg);
 
         return JsonSerializer.Serialize(albumSettingsJson, AppSettingsJsonContext.CreateJsonContext().AppSettings);
     }

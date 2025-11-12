@@ -1,21 +1,11 @@
 ﻿using PhotoAlbumCreator.AlbumLibraries;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace PhotoAlbumCreator.PhotoAlbums;
 
 public sealed class PhotoAlbum
 {
-    public static readonly IReadOnlyList<string> ImageExtensions = [
-        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff"
-    ];
-
-    public static readonly IReadOnlyList<string> VideoExtensions = [
-        ".mp4", ".webm", ".mov", ".m4v", ".avi", ".mkv"
-    ];
-
     public const string FilesDirectoryName = "Files";
 
     public const string ReadmeFileName = "README.md";
@@ -45,21 +35,5 @@ public sealed class PhotoAlbum
         FilesDirectoryPath = Path.Combine(FullPath, FilesDirectoryName);
         ReadmePath = Path.Combine(FilesDirectoryPath, ReadmeFileName);
         IndexHtmlPath = Path.Combine(FullPath, IndexHtmlFileName);
-    }
-
-    public bool IsImageExtension(string extension)
-    {
-        if (string.IsNullOrWhiteSpace(extension))
-            return false;
-
-        return ImageExtensions.Contains(extension.ToLowerInvariant());
-    }
-
-    public bool IsVideoExtension(string extension)
-    {
-        if (string.IsNullOrWhiteSpace(extension))
-            return false;
-
-        return VideoExtensions.Contains(extension.ToLowerInvariant());
     }
 }

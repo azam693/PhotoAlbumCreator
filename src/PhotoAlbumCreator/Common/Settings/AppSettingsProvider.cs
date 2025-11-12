@@ -57,7 +57,8 @@ public class AppSettingsProvider
 
         return mainSettings with
         {
-            IndexHtml = albumSettings.IndexHtml
+            IndexHtml = albumSettings.IndexHtml,
+            FFmpeg = albumSettings.FFmpeg
         };
     }
 }

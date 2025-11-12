@@ -34,6 +34,8 @@ public sealed record LocalizationSettings
 
     public string Published { get; init; } = "Published";
 
+    public string Processing { get; init; } = "Processing";
+
     public string Help { get; init; } = "Help";
 
     public string MediaView { get; init; } = "MediaView";
@@ -45,4 +47,18 @@ public sealed record LocalizationSettings
     public string FullScreenMediaView { get; init; } = "FullScreenMediaView";
 
     public string SwitchImageMediaView { get; init; } = "SwitchImageMediaView";
+
+    public string PathInput { get; init; } = "PathInput";
+
+    public string OnlyVideoFormatsSupports { get; init; } = "OnlyVideoFormatsSupports";
+    
+    public string PathNotFound { get; init; } = "PathNotFound";
+
+    public string NoVideoInDirectory { get; init; } = "NoVideoInDirectory";
+
+    public string CountOfVideoFilesFound { get; init; } = "CountOfVideoFilesFound";
+
+    public string StartingCompression { get; init; } = "StartingCompression";
+
+    public string VideoFilesCompressed { get; init; } = "VideoFilesCompressed";
 }

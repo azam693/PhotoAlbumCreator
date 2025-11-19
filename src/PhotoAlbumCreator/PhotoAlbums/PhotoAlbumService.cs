@@ -67,10 +67,10 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         var albumSettings = _appSettingsProvider.LoadAlbumSettings(photoAlbum.Library.SettingsPath);
         var html = File.ReadAllText(photoAlbum.IndexHtmlPath, new UTF8Encoding(false));
         var indexHtmlPage = new IndexHtmlPage(
+            html,
             photoAlbum,
             albumSettings.IndexHtml,
             albumSettings.Localization,
-            html,
             mediaFiles);
 
         while (indexHtmlPage.HasMediaFiles())
@@ -98,7 +98,7 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         indexHtmlPage.BuildGallery();
 
         File.Delete(photoAlbum.IndexHtmlPath);
-        File.WriteAllText(photoAlbum.IndexHtmlPath, indexHtmlPage.Html, new UTF8Encoding(false));
+        File.WriteAllText(photoAlbum.IndexHtmlPath, indexHtmlPage.BuildHtml(), new UTF8Encoding(false));
 
         Console.WriteLine(string.Format(_localization.GalleryUpdated, photoAlbum.Library.GetRelativePath(photoAlbum.IndexHtmlPath)));
     }

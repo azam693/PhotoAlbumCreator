@@ -1,4 +1,7 @@
 ﻿using AngleSharp.Dom;
+using AngleSharp.Html;
+using AngleSharp.Html.Dom;
+using AngleSharp.Html.Parser;
 using PhotoAlbumCreator.Common;
 using PhotoAlbumCreator.Common.Settings;
 using System;
@@ -20,8 +23,11 @@ public sealed class IndexHtmlPage
     private readonly IndexHtmlSettings _indexHtmlSettings;
     private readonly LocalizationSettings _localizationSettings;
     private readonly IReadOnlyList<MediaFile> _mediaFiles;
-    private readonly HtmlPage _htmlPage;
+    private readonly IHtmlDocument _document;
     private readonly IElement _galleryElement;
+
+    private List<IElement> _styleElements;
+    private List<IElement> _scriptElements;
 
     public IndexHtmlPage(
         string html,
@@ -46,18 +52,110 @@ public sealed class IndexHtmlPage
             .BuildHeader(_photoAlbum.Name, firstMediaFile)
             .BuildControls()
             .BuildHtml();
-        _htmlPage = new HtmlPage(processedHtml);
+        var parser = new HtmlParser();
+        _document = parser.ParseDocument(html);
 
-        _galleryElement = _htmlPage.GetElement(GallerySelector);
+        _galleryElement = _document.QuerySelector(GallerySelector);
         if (_galleryElement == null)
         {
             throw new AlbumException("Gallery container element not found in HTML template.");
+        }
+
+        RefreshStyleList();
+        RefreshScriptList();
+    }
+
+    private void RefreshStyleList()
+    {
+        _styleElements = _document
+            .QuerySelectorAll("link[rel=stylesheet], link[rel=preload][as=style]")
+            .ToList();
+    }
+
+    private void RefreshScriptList()
+    {
+        _scriptElements = _document
+            .QuerySelectorAll("script[src]")
+            .ToList();
+    }
+
+    public IReadOnlyList<string> GetStyles()
+    {
+        return _styleElements
+            .Select(e => e.GetAttribute("href"))
+            .ToArray();
+    }
+
+    public IReadOnlyList<string> GetScripts()
+    {
+        return _scriptElements
+            .Select(e => e.GetAttribute("src"))
+            .ToArray();
+    }
+
+    public void AddStyle(string stylePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stylePath);
+
+        var linkElement = _document.CreateElement("link") as IHtmlLinkElement;
+        linkElement.Relation = "stylesheet";
+        linkElement.Href = stylePath;
+
+        _document.Head.AppendChild(linkElement);
+    }
+
+    public void RemoveStyleByPath(string stylePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stylePath);
+
+        var styleElement = _styleElements
+            .FirstOrDefault(element => string.Equals(
+                element.GetAttribute("href"),
+                stylePath,
+                StringComparison.OrdinalIgnoreCase));
+
+        if (styleElement is not null)
+        {
+            styleElement.Remove();
+            RefreshStyleList();
+        }
+    }
+
+    public void AddScript(string scriptPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(scriptPath);
+
+        var scriptElement = _document.CreateElement("script") as IHtmlScriptElement;
+        scriptElement.SetAttribute("defer", "");
+        scriptElement.Source = scriptPath;
+
+        _document.Head.AppendChild(scriptElement);
+    }
+
+    public void RemoveScriptByPath(string scriptPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(scriptPath);
+
+        var scriptElement = _scriptElements
+            .FirstOrDefault(element => string.Equals(
+                element.GetAttribute("src"),
+                scriptPath,
+                StringComparison.OrdinalIgnoreCase));
+
+        if (scriptElement is not null)
+        {
+            scriptElement.Remove();
+            RefreshScriptList();
         }
     }
 
     public string BuildHtml()
     {
-        return _htmlPage.BuildHtml();
+        using var stringWriter = new StringWriter();
+
+        _document.ToHtml(stringWriter, new PrettyMarkupFormatter());
+
+        return stringWriter.ToString();
     }
 
     public bool HasMediaFiles()

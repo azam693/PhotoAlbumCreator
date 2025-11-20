@@ -7,6 +7,7 @@ using PhotoAlbumCreator.PhotoAlbums.Videos;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace PhotoAlbumCreator.PhotoAlbums;
@@ -95,6 +96,9 @@ public sealed class PhotoAlbumService : AlbumServiceBase
             Console.WriteLine(_localization.CommandNotRecognized);
         }
 
+        RefreshStyles(indexHtmlPage, photoAlbum);
+        RefreshScripts(indexHtmlPage, photoAlbum);
+
         indexHtmlPage.BuildGallery();
 
         File.Delete(photoAlbum.IndexHtmlPath);
@@ -102,7 +106,50 @@ public sealed class PhotoAlbumService : AlbumServiceBase
 
         Console.WriteLine(string.Format(_localization.GalleryUpdated, photoAlbum.Library.GetRelativePath(photoAlbum.IndexHtmlPath)));
     }
-    
+
+    private void RefreshStyles(IndexHtmlPage indexHtmlPage, PhotoAlbum photoAlbum)
+    {
+        var stylePaths = indexHtmlPage.GetStyles();
+        foreach (var stylePath in stylePaths)
+        {
+            if (File.Exists(stylePath))
+                continue;
+
+            indexHtmlPage.RemoveStyleByPath(stylePath);
+        }
+
+        if (!indexHtmlPage.GetStyles().Any())
+        {
+            var stylePath = GetRelativePath(photoAlbum.Library.StylePath, photoAlbum);
+            indexHtmlPage.AddStyle(stylePath);
+        }
+    }
+
+    private void RefreshScripts(IndexHtmlPage indexHtmlPage, PhotoAlbum photoAlbum)
+    {
+        var scriptPaths = indexHtmlPage.GetScripts();
+        foreach (var scriptPath in scriptPaths)
+        {
+            if (File.Exists(scriptPath))
+                continue;
+
+            indexHtmlPage.RemoveScriptByPath(scriptPath);
+        }
+
+        if (!indexHtmlPage.GetScripts().Any())
+        {
+            var scriptPath = GetRelativePath(photoAlbum.Library.ScriptPath, photoAlbum);
+            indexHtmlPage.AddScript(scriptPath);
+        }
+    }
+
+    private string GetRelativePath(string resourcePath, PhotoAlbum photoAlbum)
+    {
+        return Path
+            .GetRelativePath(photoAlbum.FullPath, resourcePath)
+            .Replace("\\", "/");
+    }
+
     private static IReadOnlyList<MediaFile> LoadMediaFiles(PhotoAlbum photoAlbum)
     {
         var mediaFiles = new List<MediaFile>();

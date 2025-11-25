@@ -252,16 +252,22 @@
   }
 
   // Open from gallery click
-  gallery.addEventListener("click", (e) => {
-    const link = e.target.closest(".media");
-    if (!link) return;
+    gallery.addEventListener("click", (e) => {
+        const link = e.target.closest(".media");
+        if (!link) return;
 
-    e.preventDefault();
-    const card = link.closest(".card[data-type]");
-    const cards = cardsAll();
-    const i = cards.indexOf(card);
-    if (i >= 0) open(i);
-  });
+        // Ищем карточку с data-type (image / video).
+        // Если нет — даём ссылке работать как обычно (папки, внешние ссылки и т.п.)
+        const card = link.closest(".card[data-type]");
+        if (!card) {
+            return;
+        }
+
+        e.preventDefault();
+        const cards = cardsAll();
+        const i = cards.indexOf(card);
+        if (i >= 0) open(i);
+    });
 
   // -------------------------------
   // Lazy load / unload

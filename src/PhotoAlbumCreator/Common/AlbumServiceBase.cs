@@ -37,11 +37,4 @@ public abstract class AlbumServiceBase
             Console.WriteLine(string.Format(_localization.FileFound, relativePath));
         }
     }
-
-    protected string Ask(string prompt)
-    {
-        Console.Write(prompt + ' ');
-
-        return Console.ReadLine().Trim() ?? string.Empty;
-    }
 }

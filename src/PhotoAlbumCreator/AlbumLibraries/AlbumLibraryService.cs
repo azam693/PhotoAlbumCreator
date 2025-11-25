@@ -1,4 +1,5 @@
-﻿using PhotoAlbumCreator.Common;
+﻿using PhotoAlbumCreator.AlbumLibraries.Requests;
+using PhotoAlbumCreator.Common;
 using PhotoAlbumCreator.Common.Settings;
 using System;
 using System.IO;
@@ -20,55 +21,37 @@ public sealed class AlbumLibraryService : AlbumServiceBase
         _resource = resource;
     }
 
-    public AlbumLibrary Create(bool isForce)
+    public AlbumLibrary Create(CreateAlbumLibraryRequest request)
     {
-        var rootPath = GetRootPath();
-        var albumLibrary = new AlbumLibrary(rootPath);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var albumLibrary = new AlbumLibrary(request.RootPath);
         Directory.CreateDirectory(albumLibrary.SystemPath);
         // Create styles file
         CreateFile(
             albumLibrary.StylePath,
             albumLibrary.GetRelativePath(albumLibrary.StylePath),
             _resource.ReadText(AlbumLibrary.StyleFileName),
-            isForce);
+            request.IsForce);
         // Create script file
         CreateFile(
             albumLibrary.ScriptPath,
             albumLibrary.GetRelativePath(albumLibrary.ScriptPath),
             _resource.ReadText(AlbumLibrary.ScriptFileName),
-            isForce);
+            request.IsForce);
         // Create README file
         CreateFile(
             albumLibrary.ReadmePath,
             albumLibrary.GetRelativePath(albumLibrary.ReadmePath),
             _resource.ReadText(AlbumLibrary.ReadmeFileTemplateName),
-            isForce);
+            request.IsForce);
         // Create settings file
         CreateFile(
             albumLibrary.SettingsPath,
             albumLibrary.GetRelativePath(albumLibrary.SettingsPath),
             albumLibrary.CreateSettingsJson(_appSettings),
-            isForce);
+            request.IsForce);
 
         return albumLibrary;
-    }
-
-    private string GetRootPath()
-    {
-        while (true)
-        {
-            var input = Ask(_localization.RootPathInput);
-            if (string.IsNullOrWhiteSpace(input))
-            {
-                return Directory.GetCurrentDirectory();
-            }
-
-            if (Directory.Exists(input))
-            {
-                return Path.GetFullPath(input);
-            }
-
-            Console.WriteLine(_localization.DirectoryNotFound);
-        }
     }
 }

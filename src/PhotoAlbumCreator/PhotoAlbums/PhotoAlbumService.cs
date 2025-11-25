@@ -3,7 +3,7 @@ using PhotoAlbumCreator.Common;
 using PhotoAlbumCreator.Common.Settings;
 using PhotoAlbumCreator.PhotoAlbums.Htmls;
 using PhotoAlbumCreator.PhotoAlbums.Photos;
-using PhotoAlbumCreator.PhotoAlbums.Videos;
+using PhotoAlbumCreator.PhotoAlbums.Requests;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,11 +30,12 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         _albumLibraryService = albumLibraryService;
     }
 
-    public PhotoAlbum Create()
+    public PhotoAlbum Create(CreatePhotoAlbumRequest request)
     {
-        var albumLibrary = _albumLibraryService.Create(false);
-        var albumName = GetAlbumName();
-        var photoAlbum = albumLibrary.CreatePhotoAlbum(albumName);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var albumLibrary = _albumLibraryService.Create(request.ToCreateAlbumLibrary());
+        var photoAlbum = albumLibrary.CreatePhotoAlbum(request.Name);
 
         Directory.CreateDirectory(photoAlbum.FullPath);
         Directory.CreateDirectory(photoAlbum.FilesDirectoryPath);
@@ -52,19 +53,51 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         return photoAlbum;
     }
     
-    public void Fill()
+    public void FillGlobal(FillGlobalPhotoAlbumRequest request)
     {
-        var photoAlbum = Create();
-        var mediaFiles = LoadMediaFiles(photoAlbum);
-        if (mediaFiles.Count == 0)
+        ArgumentNullException.ThrowIfNull(request);
+
+        var albums = new List<PhotoAlbum>();
+        var albumLibrary = _albumLibraryService.Create(request.ToCreateAlbumLibrary());
+        var rootAlbum = new PhotoAlbum(albumLibrary);
+        var albumStack = new Stack<PhotoAlbum>();
+        albumStack.Push(rootAlbum);
+        while (albumStack.Any())
         {
-            Console.WriteLine(
-                string.Format(
-                    _localization.NoMediaInFileDirectory,
-                    photoAlbum.Library.GetRelativePath(photoAlbum.FilesDirectoryPath)));
-            return;
+            var album = albumStack.Pop();
+            var childAlbums = LoadChildPhotoAlbums(albumLibrary, album.FullPath, checkIndexHtml: false);
+            foreach (var childAlbum in childAlbums)
+            {
+                albumStack.Push(childAlbum);
+            }
+
+            albums.Add(album);
         }
 
+        albums.Reverse();
+
+        foreach (var album in albums)
+        {
+            Fill(new FillPhotoAlbumRequest(albumLibrary.RootPath, album.RelativePath));
+        }
+    }
+
+    public void Fill(FillPhotoAlbumRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var photoAlbum = Create(request.ToCreatePhotoAlbum());
+        var mediaFiles = LoadMediaFiles(photoAlbum.FilesDirectoryPath);
+        //if (!photoAlbum.IsRoot && mediaFiles.Count == 0)
+        //{
+        //    Console.WriteLine(
+        //        string.Format(
+        //            _localization.NoMediaInFileDirectory,
+        //            photoAlbum.Library.GetRelativePath(photoAlbum.FilesDirectoryPath)));
+        //    return;
+        //}
+        
+        var photoAlbums = LoadChildPhotoAlbums(photoAlbum.Library, photoAlbum.FullPath);
         var albumSettings = _appSettingsProvider.LoadAlbumSettings(photoAlbum.Library.SettingsPath);
         var html = File.ReadAllText(photoAlbum.IndexHtmlPath, new UTF8Encoding(false));
         var indexHtmlPage = new IndexHtmlPage(
@@ -72,29 +105,8 @@ public sealed class PhotoAlbumService : AlbumServiceBase
             photoAlbum,
             albumSettings.IndexHtml,
             albumSettings.Localization,
-            mediaFiles);
-
-        while (indexHtmlPage.HasMediaFiles())
-        {
-            var actionSymbol = Ask(_localization.AlbumAlreadyContainsItems)
-                .ToLowerInvariant();
-            if (string.IsNullOrWhiteSpace(actionSymbol))
-            {
-                Console.WriteLine(_localization.CommandEmptyError);
-                continue;
-            }
-            else if (actionSymbol.StartsWith("c"))
-            {
-                Console.WriteLine(_localization.OperationCanceled);
-                return;
-            }
-            else if (actionSymbol.StartsWith("y"))
-            {
-                break;
-            }
-
-            Console.WriteLine(_localization.CommandNotRecognized);
-        }
+            mediaFiles,
+            photoAlbums);
 
         RefreshStyles(indexHtmlPage, photoAlbum);
         RefreshScripts(indexHtmlPage, photoAlbum);
@@ -104,7 +116,10 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         File.Delete(photoAlbum.IndexHtmlPath);
         File.WriteAllText(photoAlbum.IndexHtmlPath, indexHtmlPage.BuildHtml(), new UTF8Encoding(false));
 
-        Console.WriteLine(string.Format(_localization.GalleryUpdated, photoAlbum.Library.GetRelativePath(photoAlbum.IndexHtmlPath)));
+        Console.WriteLine(
+            string.Format(
+                _localization.GalleryUpdated,
+                photoAlbum.Library.GetRelativePath(photoAlbum.IndexHtmlPath)));
     }
 
     private void RefreshStyles(IndexHtmlPage indexHtmlPage, PhotoAlbum photoAlbum)
@@ -150,39 +165,59 @@ public sealed class PhotoAlbumService : AlbumServiceBase
             .Replace("\\", "/");
     }
 
-    private static IReadOnlyList<MediaFile> LoadMediaFiles(PhotoAlbum photoAlbum)
+    private static IReadOnlyList<PhotoAlbum> LoadChildPhotoAlbums(
+        AlbumLibrary albumLibrary,
+        string path,
+        bool checkFilesPresence = true,
+        bool checkIndexHtml = true)
+    {
+        return Directory
+            .EnumerateDirectories(path, "*", SearchOption.TopDirectoryOnly)
+            .Select(pathDirectory => albumLibrary.GetRelativePath(pathDirectory))
+            .Select(relativePath => new PhotoAlbum(albumLibrary, relativePath))
+            .Where(photoAlbum =>
+            {
+                if (photoAlbum.Name is PhotoAlbum.FilesDirectoryName
+                    or AlbumLibrary.SystemDirectoryName)
+                    return false;
+
+                if (checkIndexHtml && !Path.Exists(photoAlbum.IndexHtmlPath))
+                    return false;
+
+                if (checkFilesPresence)
+                {
+                    if (!Path.Exists(photoAlbum.FilesDirectoryPath))
+                        return false;
+
+                    return Directory
+                        .EnumerateFiles(photoAlbum.FilesDirectoryPath)
+                        .Where(filePath => PhotoAlbum.IsSupportedFile(filePath))
+                        .Any();
+                }
+                else
+                {
+                    return true;
+                }
+            })
+            .ToArray();
+    }
+
+    private static IReadOnlyList<MediaFile> LoadMediaFiles(string path)
     {
         var mediaFiles = new List<MediaFile>();
-        var directoryInfo = new DirectoryInfo(photoAlbum.FilesDirectoryPath);
+        var directoryInfo = new DirectoryInfo(path);
         foreach (var fileInfo in directoryInfo.EnumerateFiles("*", SearchOption.TopDirectoryOnly))
         {
-            var extension = fileInfo.Extension.ToLowerInvariant();
-            bool isImage = Photo.IsSupportedExtension(extension);
-            bool isVideo = Video.IsSupportedExtension(extension);
-            if (!isImage && !isVideo)
+            if (!PhotoAlbum.IsSupportedFile(fileInfo))
                 continue;
 
             mediaFiles.Add(new MediaFile(
                 fileInfo.Name,
                 fileInfo.FullName,
-                isImage,
+                Photo.IsSupportedExtension(fileInfo.Extension.ToLowerInvariant()),
                 fileInfo.LastWriteTime));
         }
 
         return mediaFiles;
-    }
-
-    private string GetAlbumName()
-    {
-        while (true)
-        {
-            var name = Ask(_localization.AlbumNameInput);
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                return name;
-            }
-
-            Console.WriteLine(_localization.AlbumNameEmptyInputError);
-        }
     }
 }

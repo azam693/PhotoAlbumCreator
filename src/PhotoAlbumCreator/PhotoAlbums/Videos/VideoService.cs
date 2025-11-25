@@ -1,6 +1,7 @@
 ﻿using PhotoAlbumCreator.Common;
 using PhotoAlbumCreator.Common.Settings;
 using PhotoAlbumCreator.PhotoAlbums.Videos.Compressors;
+using PhotoAlbumCreator.PhotoAlbums.Videos.Requests;
 using System;
 using System.IO;
 
@@ -18,20 +19,18 @@ public sealed class VideoService : AlbumServiceBase
         _compressor = compressor;
     }
 
-    public void Compress()
+    public void Compress(CompressVideoRequest request)
     {
-        Console.WriteLine(_localization.OnlyVideoFormatsSupports);
+        ArgumentNullException.ThrowIfNull(request);
 
-        var path = Ask(_localization.PathInput);
-        
-        if (File.Exists(path))
+        if (File.Exists(request.Path))
         {
-            var fileInfo = new FileInfo(path);
+            var fileInfo = new FileInfo(request.Path);
             _compressor.ProcessFile(fileInfo);
         }
-        else if (Directory.Exists(path))
+        else if (Directory.Exists(request.Path))
         {
-            _compressor.ProcessFolder(path);
+            _compressor.ProcessFolder(request.Path);
         }
         else
         {

@@ -50,10 +50,11 @@ public sealed class AlbumLibrary
             var currentDirectoryPath = Path.GetFullPath(RootPath) + Path.DirectorySeparatorChar;
             if (fullPath.StartsWith(currentDirectoryPath, StringComparison.OrdinalIgnoreCase))
                 return fullPath
-                    .Substring(currentDirectoryPath.Length)
-                    .Replace('\\', '/');
+                    .Substring(currentDirectoryPath.Length);
+                    //.Replace('\\', '/');
 
-            return fullPath.Replace('\\', '/');
+            return fullPath;
+            //return fullPath.Replace('\\', '/');
         }
         catch
         {

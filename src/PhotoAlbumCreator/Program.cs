@@ -1,12 +1,16 @@
 using PhotoAlbumCreator.AlbumLibraries;
+using PhotoAlbumCreator.AlbumLibraries.Requests;
 using PhotoAlbumCreator.Common;
 using PhotoAlbumCreator.Common.Settings;
 using PhotoAlbumCreator.PhotoAlbums;
+using PhotoAlbumCreator.PhotoAlbums.Requests;
 using PhotoAlbumCreator.PhotoAlbums.Videos;
 using PhotoAlbumCreator.PhotoAlbums.Videos.Compressors;
 using PhotoAlbumCreator.PhotoAlbums.Videos.Compressors.FFmpeg;
+using PhotoAlbumCreator.PhotoAlbums.Videos.Requests;
 using System;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -19,6 +23,9 @@ internal static class Program
     public const string Help = "help";
 
     public const string ForceParameter = "--force";
+    public const string ForceParameterShort = "-f";
+    public const string GlobalParameter = "--global";
+    public const string GlobalParameterShort = "-g";
 
     public static int Main(string[] args)
     {
@@ -60,20 +67,28 @@ internal static class Program
             switch (commands[0])
             {
                 case CreateAlbumLibrary:
-                    bool isForce = commands.Any(a => string.Equals(a, ForceParameter, StringComparison.OrdinalIgnoreCase));
-                    albumLibraryService.Create(isForce: isForce);
+                    albumLibraryService.Create(CreateAlbumLibraryRequest());
                     break;
                 case CreatePhotoAlbum:
-                    photoAlbumService.Create();
+                    photoAlbumService.Create(CreatePhotoAlbumRequest());
                     break;
                 case FillPhotoAlbum:
-                    photoAlbumService.Fill();
+                    bool isGlobal = HasParameter(GlobalParameter)
+                        || HasParameter(GlobalParameterShort);
+                    if (isGlobal)
+                    {
+                        photoAlbumService.FillGlobal(FillGlobalPhotoAlbumRequest());
+                    }
+                    else
+                    {
+                        photoAlbumService.Fill(FillPhotoAlbumRequest());
+                    }
                     break;
                 case Compress:
                     var compressor = new FFmpegCompressor(processRunner, appSettings.FFmpeg);
                     var videoCompressor = new VideoCompressor(compressor, appSettings.Localization);
                     var videoService = new VideoService(videoCompressor, appSettingsProvider);
-                    videoService.Compress();
+                    videoService.Compress(CompressVideoRequest());
                     break;
                 case Help:
                 case $"--{Help}":
@@ -91,6 +106,93 @@ internal static class Program
         {
             Console.WriteLine(string.Format(localization.Error, ex.Message));
             return 3;
+        }
+
+        CreateAlbumLibraryRequest CreateAlbumLibraryRequest()
+        {
+            var rootPath = GetRootPath();
+            var isForce = HasParameter(ForceParameter)
+                || HasParameter(ForceParameterShort);
+
+            return new CreateAlbumLibraryRequest(rootPath, isForce);
+        }
+
+        CreatePhotoAlbumRequest CreatePhotoAlbumRequest()
+        {
+            var rootPath = GetRootPath();
+            var albumName = GetAlbumName();
+            
+            return new CreatePhotoAlbumRequest(rootPath, albumName);
+        }
+
+        FillPhotoAlbumRequest FillPhotoAlbumRequest()
+        {
+            var rootPath = GetRootPath();
+            var albumName = GetAlbumName();
+
+            return new FillPhotoAlbumRequest(rootPath, albumName);
+        }
+
+        FillGlobalPhotoAlbumRequest FillGlobalPhotoAlbumRequest()
+        {
+            var rootPath = GetRootPath();
+
+            return new FillGlobalPhotoAlbumRequest(rootPath);
+        }
+
+        CompressVideoRequest CompressVideoRequest()
+        {
+            Console.WriteLine(localization.OnlyVideoFormatsSupports);
+
+            var path = Ask(localization.PathInput);
+
+            return new CompressVideoRequest(path);
+        }
+
+        string GetAlbumName()
+        {
+            while (true)
+            {
+                var name = Ask(localization.AlbumNameInput);
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    return name;
+                }
+
+                Console.WriteLine(localization.AlbumNameEmptyInputError);
+            }
+        }
+
+        string GetRootPath()
+        {
+            while (true)
+            {
+                var input = Ask(localization.RootPathInput);
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    return Directory.GetCurrentDirectory();
+                }
+
+                if (Directory.Exists(input))
+                {
+                    return Path.GetFullPath(input);
+                }
+
+                Console.WriteLine(localization.DirectoryNotFound);
+            }
+        }
+
+        string Ask(string prompt)
+        {
+            Console.Write(prompt + ' ');
+
+            return Console.ReadLine().Trim() ?? string.Empty;
+        }
+
+        bool HasParameter(string parameter)
+        {
+            return commands.Any(
+                command => string.Equals(command, parameter, StringComparison.OrdinalIgnoreCase));
         }
     }
 }

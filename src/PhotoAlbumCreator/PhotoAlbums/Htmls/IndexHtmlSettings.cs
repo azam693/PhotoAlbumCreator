@@ -41,4 +41,10 @@ public sealed class IndexHtmlSettings
     <p>Place text here.</p>
 </div>
 -->";
+
+    public string AlbumBlock { get; init; } =
+"<div class=\"photos photos--folders\">{{albumItems}}</div>";
+    
+    public string AlbumItem { get; init; } =
+"<article class=\"card folder\"><a class=\"media\" href=\"{{albumPath}}\"><div class=\"folder-icon\" aria-hidden=\"true\"></div><div class=\"folder-text\"><div class=\"folder-name\">{{albumName}}</div></div></a></article>";
 }

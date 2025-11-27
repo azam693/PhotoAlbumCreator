@@ -1,4 +1,5 @@
-﻿using PhotoAlbumCreator.AlbumLibraries;
+﻿using AngleSharp.Io;
+using PhotoAlbumCreator.AlbumLibraries;
 using PhotoAlbumCreator.Common;
 using PhotoAlbumCreator.Common.Settings;
 using PhotoAlbumCreator.PhotoAlbums.Htmls;
@@ -14,6 +15,8 @@ namespace PhotoAlbumCreator.PhotoAlbums;
 
 public sealed class PhotoAlbumService : AlbumServiceBase
 {
+    private record AlbumPath(string FullPath, string RelativePath);
+
     private readonly Resource _resource;
     private readonly AlbumLibraryService _albumLibraryService;
 
@@ -35,10 +38,16 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         ArgumentNullException.ThrowIfNull(request);
 
         var albumLibrary = _albumLibraryService.Create(request.ToCreateAlbumLibrary());
-        var photoAlbum = albumLibrary.CreatePhotoAlbum(request.Name);
 
-        Directory.CreateDirectory(photoAlbum.FullPath);
-        Directory.CreateDirectory(photoAlbum.FilesDirectoryPath);
+        Directory.CreateDirectory(PhotoAlbum.GetFullPath(albumLibrary, request.Name));
+        Directory.CreateDirectory(PhotoAlbum.GetFilesDirectoryPath(albumLibrary, request.Name));
+
+        var (mediaFiles, photoAlbums) = LoadAlbumResources(
+            albumLibrary,
+            request.Name,
+            maxResourceDeep: 2);
+        var photoAlbum = albumLibrary.CreatePhotoAlbum(request.Name, mediaFiles, photoAlbums);
+
         // Create Readme file
         CreateFile(
             photoAlbum.ReadmePath,
@@ -59,13 +68,19 @@ public sealed class PhotoAlbumService : AlbumServiceBase
 
         var albums = new List<PhotoAlbum>();
         var albumLibrary = _albumLibraryService.Create(request.ToCreateAlbumLibrary());
-        var rootAlbum = new PhotoAlbum(albumLibrary);
+        var rootAlbum = Create(new CreatePhotoAlbumRequest(
+            albumLibrary.RootPath,
+            albumLibrary.RootPath));
         var albumStack = new Stack<PhotoAlbum>();
         albumStack.Push(rootAlbum);
         while (albumStack.Any())
         {
             var album = albumStack.Pop();
-            var childAlbums = LoadChildPhotoAlbums(albumLibrary, album.FullPath, checkIndexHtml: false);
+            var childAlbums = LoadChildPhotoAlbums(
+                albumLibrary,
+                album.FullPath,
+                maxResourceDeep: 1,
+                checkIndexHtml: false);
             foreach (var childAlbum in childAlbums)
             {
                 albumStack.Push(childAlbum);
@@ -87,26 +102,13 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         ArgumentNullException.ThrowIfNull(request);
 
         var photoAlbum = Create(request.ToCreatePhotoAlbum());
-        var mediaFiles = LoadMediaFiles(photoAlbum.FilesDirectoryPath);
-        //if (!photoAlbum.IsRoot && mediaFiles.Count == 0)
-        //{
-        //    Console.WriteLine(
-        //        string.Format(
-        //            _localization.NoMediaInFileDirectory,
-        //            photoAlbum.Library.GetRelativePath(photoAlbum.FilesDirectoryPath)));
-        //    return;
-        //}
-        
-        var photoAlbums = LoadChildPhotoAlbums(photoAlbum.Library, photoAlbum.FullPath);
         var albumSettings = _appSettingsProvider.LoadAlbumSettings(photoAlbum.Library.SettingsPath);
         var html = File.ReadAllText(photoAlbum.IndexHtmlPath, new UTF8Encoding(false));
         var indexHtmlPage = new IndexHtmlPage(
             html,
             photoAlbum,
             albumSettings.IndexHtml,
-            albumSettings.Localization,
-            mediaFiles,
-            photoAlbums);
+            albumSettings.Localization);
 
         RefreshStyles(indexHtmlPage, photoAlbum);
         RefreshScripts(indexHtmlPage, photoAlbum);
@@ -158,23 +160,52 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         }
     }
 
-    private string GetRelativePath(string resourcePath, PhotoAlbum photoAlbum)
+    private static string GetRelativePath(string resourcePath, PhotoAlbum photoAlbum)
     {
         return Path
             .GetRelativePath(photoAlbum.FullPath, resourcePath)
             .Replace("\\", "/");
     }
 
-    private static IReadOnlyList<PhotoAlbum> LoadChildPhotoAlbums(
+    private static (IReadOnlyList<MediaFile> MediaFiles, IReadOnlyList<PhotoAlbum> PhotoAlbums) LoadAlbumResources(
         AlbumLibrary albumLibrary,
-        string path,
+        string albumName,
+        int maxResourceDeep = 1,
         bool checkFilesPresence = true,
         bool checkIndexHtml = true)
     {
+        var mediaFiles = LoadMediaFiles(
+            PhotoAlbum.GetFilesDirectoryPath(albumLibrary, albumName));
+        var photoAlbums = LoadChildPhotoAlbums(
+            albumLibrary,
+            PhotoAlbum.GetFullPath(albumLibrary, albumName),
+            maxResourceDeep,
+            checkFilesPresence,
+            checkIndexHtml);
+
+        return (mediaFiles, photoAlbums);
+    }
+
+    private static IReadOnlyList<PhotoAlbum> LoadChildPhotoAlbums(
+        AlbumLibrary albumLibrary,
+        string path,
+        int maxResourceDeep = 1,
+        bool checkFilesPresence = true,
+        bool checkIndexHtml = true)
+    {
+        maxResourceDeep--;
+
         return Directory
             .EnumerateDirectories(path, "*", SearchOption.TopDirectoryOnly)
             .Select(pathDirectory => albumLibrary.GetRelativePath(pathDirectory))
-            .Select(relativePath => new PhotoAlbum(albumLibrary, relativePath))
+            .Select(relativePath =>
+            {
+                var (mediaFiles, photoAlbums) = maxResourceDeep > 0
+                    ? LoadAlbumResources(albumLibrary, relativePath, maxResourceDeep: 1)
+                    : (Array.Empty<MediaFile>(), Array.Empty<PhotoAlbum>());
+
+                return new PhotoAlbum(albumLibrary, relativePath, mediaFiles, photoAlbums);
+            })
             .Where(photoAlbum =>
             {
                 if (photoAlbum.Name is PhotoAlbum.FilesDirectoryName
@@ -205,6 +236,9 @@ public sealed class PhotoAlbumService : AlbumServiceBase
     private static IReadOnlyList<MediaFile> LoadMediaFiles(string path)
     {
         var mediaFiles = new List<MediaFile>();
+        if (!Path.Exists(path))
+            return mediaFiles;
+
         var directoryInfo = new DirectoryInfo(path);
         foreach (var fileInfo in directoryInfo.EnumerateFiles("*", SearchOption.TopDirectoryOnly))
         {

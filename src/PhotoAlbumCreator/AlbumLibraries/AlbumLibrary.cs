@@ -1,6 +1,7 @@
 ﻿using PhotoAlbumCreator.Common.Settings;
 using PhotoAlbumCreator.PhotoAlbums;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -34,9 +35,12 @@ public sealed class AlbumLibrary
         StylePath = Path.Combine(SystemPath, StyleFileName);
     }
 
-    public PhotoAlbum CreatePhotoAlbum(string name)
+    public PhotoAlbum CreatePhotoAlbum(
+        string name,
+        IReadOnlyList<MediaFile> mediaFiles,
+        IReadOnlyList<PhotoAlbum> albums)
     {
-        return new PhotoAlbum(this, name);
+        return new PhotoAlbum(this, name, mediaFiles, albums);
     }
 
     public string GetRelativePath(string path)
@@ -51,10 +55,8 @@ public sealed class AlbumLibrary
             if (fullPath.StartsWith(currentDirectoryPath, StringComparison.OrdinalIgnoreCase))
                 return fullPath
                     .Substring(currentDirectoryPath.Length);
-                    //.Replace('\\', '/');
 
             return fullPath;
-            //return fullPath.Replace('\\', '/');
         }
         catch
         {

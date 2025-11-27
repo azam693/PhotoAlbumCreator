@@ -2,6 +2,7 @@
 using PhotoAlbumCreator.PhotoAlbums.Photos;
 using PhotoAlbumCreator.PhotoAlbums.Videos;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace PhotoAlbumCreator.PhotoAlbums;
@@ -16,8 +17,9 @@ public sealed class PhotoAlbum
     public const string IndexHtmlTemplateName = "index_template.html";
 
     private readonly AlbumLibrary _albumLibrary;
-    
-    public bool IsRoot { get; private set; }
+    private readonly IReadOnlyList<MediaFile> _mediaFiles;
+    private readonly IReadOnlyList<PhotoAlbum> _childAlbums;
+
     public string Name { get; private set; }
     public string RelativePath { get; private set; }
     public string FullPath { get; private set; }
@@ -27,28 +29,48 @@ public sealed class PhotoAlbum
 
     public AlbumLibrary Library => _albumLibrary;
 
-    public PhotoAlbum(AlbumLibrary albumLibrary, )
-        : this(albumLibrary, albumLibrary.RootPath)
-    {
-        
-    }
+    public IReadOnlyList<MediaFile> MediaFiles => _mediaFiles;
+    public IReadOnlyList<PhotoAlbum> ChildAlbums => _childAlbums;
 
-    public PhotoAlbum(AlbumLibrary albumLibrary, string name)
+    public PhotoAlbum(
+        AlbumLibrary albumLibrary,
+        string name,
+        IReadOnlyList<MediaFile> mediaFiles,
+        IReadOnlyList<PhotoAlbum> albums)
     {
         ArgumentNullException.ThrowIfNull(albumLibrary);
         ArgumentException.ThrowIfNullOrEmpty(name);
 
         _albumLibrary = albumLibrary;
 
-        name = name.Trim();
+        name = ProcessName(name);
 
-        IsRoot = albumLibrary.RootPath.Equals(name, StringComparison.InvariantCultureIgnoreCase);
         Name = Path.GetFileName(name);
         RelativePath = name;
-        FullPath = Path.Combine(albumLibrary.RootPath, name.Trim());
-        FilesDirectoryPath = Path.Combine(FullPath, FilesDirectoryName);
+        FullPath = GetFullPath(albumLibrary, name);
+        FilesDirectoryPath = GetFilesDirectoryPath(albumLibrary, name);
         ReadmePath = Path.Combine(FilesDirectoryPath, ReadmeFileName);
         IndexHtmlPath = Path.Combine(FullPath, IndexHtmlFileName);
+
+        _mediaFiles = mediaFiles ?? Array.Empty<MediaFile>();
+        _childAlbums = albums ?? Array.Empty<PhotoAlbum>();
+    }
+
+    public static string GetFilesDirectoryPath(AlbumLibrary albumLibrary, string name)
+    {
+        return Path.Combine(
+            GetFullPath(albumLibrary, name),
+            FilesDirectoryName);
+    }
+
+    public static string GetFullPath(AlbumLibrary albumLibrary, string name)
+    {
+        return Path.Combine(albumLibrary.RootPath, ProcessName(name));
+    }
+
+    public static string ProcessName(string name)
+    {
+        return name.Trim();
     }
 
     public static bool IsSupportedFile(FileInfo fileInfo)

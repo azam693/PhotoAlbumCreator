@@ -14,6 +14,11 @@ namespace PhotoAlbumCreator.PhotoAlbums.Htmls;
 
 public sealed class IndexHtmlPage
 {
+    private record AlbumActionState(
+        IReadOnlyList<PhotoAlbum> AlbumsToAdd,
+        IReadOnlyList<IElement> ElementsToRemove,
+        IReadOnlyList<(IElement Element, PhotoAlbum Album)> ElementsToUpdate);
+
     private static readonly MediaFile EmptyMediaFile = new MediaFile("Empty", "/", false, DateTime.Now);
 
     private const string GallerySelector = ".container #gallery";
@@ -25,9 +30,7 @@ public sealed class IndexHtmlPage
     
     private readonly PhotoAlbum _album;
     private readonly IndexHtmlSettings _indexHtmlSettings;
-    private readonly LocalizationSettings _localizationSettings;
-    private readonly IReadOnlyList<MediaFile> _mediaFiles;
-    private readonly IReadOnlyList<PhotoAlbum> _childAlbums;
+    private readonly LocalizationSettings _localizationSettings;    
     private readonly IHtmlDocument _document;
     private readonly IElement _galleryElement;
 
@@ -38,9 +41,7 @@ public sealed class IndexHtmlPage
         string html,
         PhotoAlbum album,
         IndexHtmlSettings indexHtmlSettings,
-        LocalizationSettings localizationSettings,
-        IReadOnlyList<MediaFile> mediaFiles,
-        IReadOnlyList<PhotoAlbum> albums)
+        LocalizationSettings localizationSettings)
     {
         ArgumentNullException.ThrowIfNull(album);
         ArgumentNullException.ThrowIfNull(indexHtmlSettings);
@@ -50,11 +51,9 @@ public sealed class IndexHtmlPage
         _album = album;
         _indexHtmlSettings = indexHtmlSettings;
         _localizationSettings = localizationSettings;
-        _mediaFiles = mediaFiles ?? Array.Empty<MediaFile>();
-        _childAlbums = albums ?? Array.Empty<PhotoAlbum>();
 
-        var mediaFileForTemplate = mediaFiles.Count > 0
-            ? mediaFiles.OrderBy(m => m.CreatedAt).First()
+        var mediaFileForTemplate = _album.MediaFiles.Count > 0
+            ? _album.MediaFiles.OrderBy(m => m.CreatedAt).First()
             : EmptyMediaFile;
         var indexHtmlTemplate = new IndexHtmlTemplate(html, _localizationSettings);
         var processedHtml = indexHtmlTemplate
@@ -180,18 +179,19 @@ public sealed class IndexHtmlPage
 
     private void BuildInternalAlbums()
     {
-        if (_childAlbums.Count == 0)
+        if (_album.ChildAlbums.Count == 0)
             return;
 
-        var albumsToWrite = _childAlbums;
+        var albumsToWrite = _album.ChildAlbums;
         var albumBlock = GetAlbumBlock();
         if (albumBlock is not null)
         {
             var albumElements = albumBlock.QuerySelectorAll(AlbumSelector);
-            var (albumsToAdd, albumsToDelete) = FilterExistingAlbums(_childAlbums, albumElements);
-            RemoveAlbums(albumsToDelete);
+            var albumActionState = BuildAlbumActionState(_album.ChildAlbums, albumElements);
+            RemoveAlbumElements(albumActionState.ElementsToRemove);
+            UpdateAlbumElements(albumActionState.ElementsToUpdate);
 
-            albumsToWrite = albumsToAdd;
+            albumsToWrite = albumActionState.AlbumsToAdd;
         }
 
         albumBlock = GetAlbumBlock();
@@ -213,7 +213,7 @@ public sealed class IndexHtmlPage
         }
     }
 
-    private (IReadOnlyList<PhotoAlbum> AlbumsToAdd, IReadOnlyList<IElement> AlbumsToRemove) FilterExistingAlbums(
+    private AlbumActionState BuildAlbumActionState(
         IReadOnlyList<PhotoAlbum> albums,
         IHtmlCollection<IElement> existingElements)
     {
@@ -240,15 +240,22 @@ public sealed class IndexHtmlPage
             .Where(albumPair => !existingElementsPairs.ContainsKey(albumPair.Key))
             .Select(albumPair => albumPair.Value)
             .ToArray();
-        var albumsToRemove = existingElementsPairs
+        var elementsToRemove = existingElementsPairs
             .Where(existingElementsPair => !albumPairs.ContainsKey(existingElementsPair.Key))
             .Select(existingElementsPair => existingElementsPair.Value)
             .ToArray();
 
-        return (AlbumsToAdd: albumsToAdd, AlbumsToRemove: albumsToRemove);
+        var elementsToUpdate = existingElementsPairs
+            .Where(element => !elementsToRemove.Contains(element.Value))
+            .Where(element => !albumsToAdd.Any(album => album.Name == element.Key))
+            .Where(element => albumPairs.ContainsKey(element.Key))
+            .Select(element => (Element: element.Value, Album: albumPairs[element.Key]))
+            .ToArray();
+
+        return new(albumsToAdd, elementsToRemove, elementsToUpdate);
     }
 
-    private void RemoveAlbums(IReadOnlyList<IElement> albumElements)
+    private void RemoveAlbumElements(IReadOnlyList<IElement> albumElements)
     {
         if (albumElements.Count == 0)
             return;
@@ -273,6 +280,19 @@ public sealed class IndexHtmlPage
             ?.Remove();
     }
 
+    private void UpdateAlbumElements(IReadOnlyList<(IElement Element, PhotoAlbum Album)> albumElements)
+    {
+        foreach (var albumElement in albumElements)
+        {
+            var fileCountElements = albumElement.Element.QuerySelector(".folder-meta");
+            if (fileCountElements is not null)
+            {
+                fileCountElements.InnerHtml = GetMediaFilesCountText(
+                    albumElement.Album.MediaFiles.Count);
+            }
+        }
+    }
+
     private IElement? GetAlbumBlock()
     {
         return _galleryElement.QuerySelector(AlbumBlockSelector);
@@ -289,22 +309,28 @@ public sealed class IndexHtmlPage
             itemsBuilder.AppendLine(
                 _indexHtmlSettings.AlbumItem
                     .Replace("{{albumPath}}", $"{photoAlbum.Name}/{PhotoAlbum.IndexHtmlFileName}")
-                    .Replace("{{albumName}}", photoAlbum.Name));
+                    .Replace("{{albumName}}", photoAlbum.Name))
+                    .Replace("{{filesCount}}", GetMediaFilesCountText(photoAlbum.MediaFiles.Count));
         }
 
         return itemsBuilder.ToString();
     }
     
+    private static string GetMediaFilesCountText(int count)
+    {
+        return $"({count})";
+    }
+
     private void BuildMediaFiles()
     {
-        if (_mediaFiles.Count == 0)
+        if (_album.MediaFiles.Count == 0)
             return;
 
-        var mediaFilesToWrite = _mediaFiles;
+        var mediaFilesToWrite = _album.MediaFiles;
         var fileElements = GetExistingMediaFileElements();
         if (fileElements.Any())
         {
-            var (filesToAdd, filesToRemove) = FilterExistingMediaFiles(_mediaFiles, fileElements);
+            var (filesToAdd, filesToRemove) = FilterExistingMediaFiles(_album.MediaFiles, fileElements);
             RemoveMediaFiles(filesToRemove);
 
             mediaFilesToWrite = filesToAdd;

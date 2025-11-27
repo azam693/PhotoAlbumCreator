@@ -1,7 +1,13 @@
+using System;
+using System.IO;
+using System.Text;
+using Xunit;
 using PhotoAlbumCreator.AlbumLibraries;
 using PhotoAlbumCreator.Common;
 using PhotoAlbumCreator.Common.Settings;
 using PhotoAlbumCreator.PhotoAlbums;
+using PhotoAlbumCreator.AlbumLibraries.Requests;
+using PhotoAlbumCreator.PhotoAlbums.Requests;
 
 namespace PhotoAlbumCreator.Tests;
 
@@ -17,16 +23,13 @@ public class AlbumCommandsIntegrationTests
         var tempRoot = Path.Combine(Path.GetTempPath(), TestProjectName, Guid.NewGuid().ToString());
         Directory.CreateDirectory(tempRoot);
 
-        var input = new StringReader(tempRoot + Environment.NewLine);
-        var originalIn = Console.In;
         try
         {
-            Console.SetIn(input);
-
             var resource = new Resource();
             var appSettingsProvider = new AppSettingsProvider(resource);
             var albumLibraryService = new AlbumLibraryService(resource, appSettingsProvider);
-            var albumLibrary = albumLibraryService.Create(isForce: false);
+            var request = new CreateAlbumLibraryRequest(tempRoot, isForce: false);
+            var albumLibrary = albumLibraryService.Create(request);
 
             // Assert System folder exists
             Assert.True(Directory.Exists(albumLibrary.SystemPath));
@@ -51,12 +54,7 @@ public class AlbumCommandsIntegrationTests
         }
         finally
         {
-            Console.SetIn(originalIn);
-            try
-            {
-                Directory.Delete(tempRoot, recursive: true);
-            }
-            catch { }
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
         }
     }
 
@@ -67,18 +65,20 @@ public class AlbumCommandsIntegrationTests
         var tempRoot = Path.Combine(Path.GetTempPath(), TestProjectName, Guid.NewGuid().ToString());
         Directory.CreateDirectory(tempRoot);
 
-        var input = new StringReader(tempRoot + Environment.NewLine + "MyAlbum" + Environment.NewLine);
-        var originalIn = Console.In;
         try
         {
-            Console.SetIn(input);
-
             var resource = new Resource();
             var appSettingsProvider = new AppSettingsProvider(resource);
             var albumLibraryService = new AlbumLibraryService(resource, appSettingsProvider);
             var photoAlbumService = new PhotoAlbumService(resource, appSettingsProvider, albumLibraryService);
 
-            var album = photoAlbumService.Create();
+            var createLibraryRequest = new CreateAlbumLibraryRequest(tempRoot, isForce: false);
+            var createAlbumRequest = new CreatePhotoAlbumRequest(tempRoot, "MyAlbum");
+
+            // Ensure library exists
+            albumLibraryService.Create(createLibraryRequest);
+
+            var album = photoAlbumService.Create(createAlbumRequest);
 
             // Check system files
             Assert.True(Directory.Exists(album.Library.SystemPath));
@@ -98,12 +98,7 @@ public class AlbumCommandsIntegrationTests
         }
         finally
         {
-            Console.SetIn(originalIn);
-            try
-            {
-                Directory.Delete(tempRoot, recursive: true);
-            }
-            catch { }
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
         }
     }
 
@@ -126,19 +121,16 @@ public class AlbumCommandsIntegrationTests
         File.WriteAllText(file1, "fakejpgcontent");
         File.WriteAllText(file2, "fakejpgcontent");
 
-        var input = new StringReader(tempRoot + Environment.NewLine + albumName + Environment.NewLine);
-        var originalIn = Console.In;
         try
         {
-            Console.SetIn(input);
-
             var resource = new Resource();
             var appSettingsProvider = new AppSettingsProvider(resource);
             var albumLibraryService = new AlbumLibraryService(resource, appSettingsProvider);
             var photoAlbumService = new PhotoAlbumService(resource, appSettingsProvider, albumLibraryService);
 
             // Call Fill - it will create System and index.html then scan Files and build gallery
-            photoAlbumService.Fill();
+            var fillRequest = new FillPhotoAlbumRequest(tempRoot, albumName);
+            photoAlbumService.Fill(fillRequest);
 
             var indexPath = Path.Combine(albumDirectory, PhotoAlbum.IndexHtmlFileName);
             Assert.True(File.Exists(indexPath));
@@ -150,42 +142,60 @@ public class AlbumCommandsIntegrationTests
         }
         finally
         {
-            Console.SetIn(originalIn);
-            try
-            {
-                Directory.Delete(tempRoot, recursive: true);
-            }
-            catch { }
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
         }
     }
 
     private static string CopyResourcesToAppBase()
     {
         var target = Path.Combine(AppContext.BaseDirectory, ResourceFolder);
-        if (!Directory.Exists(target))
-        {
-            Directory.CreateDirectory(target);
-        }
+        if (!Directory.Exists(target)) Directory.CreateDirectory(target);
 
-        // Try to locate source resources folder in the repo: ../src/PhotoAlbumCreator/Resources
-        string? srcResources = null;
-        var currentDirectory = Directory.GetCurrentDirectory();
-        var directoryInfo = new DirectoryInfo(currentDirectory);
-        while (directoryInfo != null)
+        // find repository root by searching for PhotoAlbumCreator.csproj in ancestors (handles layout with src/)
+        string? repoRoot = null;
+        var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (dir != null)
         {
-            var candidate = Path.Combine(directoryInfo.FullName, "src", "PhotoAlbumCreator", ResourceFolder);
-            if (Directory.Exists(candidate))
+            if (File.Exists(Path.Combine(dir.FullName, "PhotoAlbumCreator.csproj")))
             {
-                srcResources = candidate;
+                repoRoot = dir.FullName;
                 break;
             }
-            directoryInfo = directoryInfo.Parent;
+
+            // also handle repo layout where projects are under 'src' folder
+            if (File.Exists(Path.Combine(dir.FullName, "src", "PhotoAlbumCreator", "PhotoAlbumCreator.csproj")))
+            {
+                repoRoot = dir.FullName;
+                break;
+            }
+
+            dir = dir.Parent;
+        }
+
+        if (repoRoot is null)
+            throw new InvalidOperationException("Can't locate repository root. Run tests from repository checkout.");
+
+        // possible locations for Resources
+        var candidates = new[]
+        {
+            Path.Combine(repoRoot, "src", "PhotoAlbumCreator", ResourceFolder),
+            Path.Combine(repoRoot, "PhotoAlbumCreator", ResourceFolder),
+            Path.Combine(repoRoot, "src", "PhotoAlbumCreator", "Resources"), // alternative spelling
+            Path.Combine(repoRoot, "PhotoAlbumCreator", "Resources")
+        };
+
+        string? srcResources = null;
+        foreach (var c in candidates)
+        {
+            if (Directory.Exists(c))
+            {
+                srcResources = c;
+                break;
+            }
         }
 
         if (srcResources is null)
-        {
             throw new InvalidOperationException("Can't locate source Resources folder. Ensure tests run from repository checkout.");
-        }
 
         foreach (var file in Directory.EnumerateFiles(srcResources))
         {

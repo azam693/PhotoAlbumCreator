@@ -14,11 +14,6 @@ namespace PhotoAlbumCreator.PhotoAlbums.Htmls;
 
 public sealed class IndexHtmlPage
 {
-    private record AlbumActionState(
-        IReadOnlyList<PhotoAlbum> AlbumsToAdd,
-        IReadOnlyList<IElement> ElementsToRemove,
-        IReadOnlyList<(IElement Element, PhotoAlbum Album)> ElementsToUpdate);
-
     private static readonly MediaFile EmptyMediaFile = new MediaFile("Empty", "/", false, DateTime.Now);
 
     private const string GallerySelector = ".container #gallery";
@@ -171,154 +166,62 @@ public sealed class IndexHtmlPage
         return GetExistingMediaFileElements().Any();
     }
 
-    public void BuildGallery()
+    public void BuildGallery(OrderAlbumFields orderAlbumField)
     {
-        BuildInternalAlbums();
+        BuildInternalAlbums(orderAlbumField);
         BuildMediaFiles();
     }
 
-    private void BuildInternalAlbums()
+    private void BuildInternalAlbums(OrderAlbumFields orderAlbumField)
     {
         if (_album.ChildAlbums.Count == 0)
             return;
 
-        var albumsToWrite = _album.ChildAlbums;
-        var albumBlock = GetAlbumBlock();
+        var albumBlock = _galleryElement.QuerySelector(AlbumBlockSelector);
         if (albumBlock is not null)
         {
-            var albumElements = albumBlock.QuerySelectorAll(AlbumSelector);
-            var albumActionState = BuildAlbumActionState(_album.ChildAlbums, albumElements);
-            RemoveAlbumElements(albumActionState.ElementsToRemove);
-            UpdateAlbumElements(albumActionState.ElementsToUpdate);
-
-            albumsToWrite = albumActionState.AlbumsToAdd;
+            albumBlock.InnerHtml = string.Empty;
         }
 
-        albumBlock = GetAlbumBlock();
-        if (albumsToWrite.Any())
+        var orderedAlbums = SortPhotoAlbum(orderAlbumField);
+        var albumItemsHtml = new StringBuilder();
+        foreach (var album in orderedAlbums)
         {
-            var albumsHtml = CreateAlbumItemsHtml(albumsToWrite);
-            if (albumBlock is null)
-            {
-                var newAlbumBlock = _indexHtmlSettings.AlbumBlock
-                    .Replace("{{albumItems}}", albumsHtml);
-                var groupAlbumsHtml = _indexHtmlSettings.GroupBlock
-                    .Replace("{{groupBlock}}", newAlbumBlock);
-                _galleryElement.Insert(AdjacentPosition.AfterBegin, groupAlbumsHtml);
-            }
-            else
-            {
-                albumBlock.Insert(AdjacentPosition.BeforeEnd, albumsHtml);
-            }
+            var albumItemHtml = _indexHtmlSettings.AlbumItem
+                .Replace("{{albumPath}}", $"{album.Name}/{PhotoAlbum.IndexHtmlFileName}")
+                .Replace("{{albumName}}", album.Name)
+                .Replace("{{filesCount}}", $"({album.MediaFiles.Count})");
+
+            albumItemsHtml.Append(albumItemHtml);
         }
+
+        var newAlbumBlockHtml = _indexHtmlSettings.AlbumBlock
+            .Replace("{{albumItems}}", albumItemsHtml.ToString());
+        var groupAlbumsHtml = _indexHtmlSettings.GroupBlock
+            .Replace("{{groupBlock}}", newAlbumBlockHtml);
+
+        _galleryElement.Insert(AdjacentPosition.AfterBegin, groupAlbumsHtml);
     }
 
-    private AlbumActionState BuildAlbumActionState(
-        IReadOnlyList<PhotoAlbum> albums,
-        IHtmlCollection<IElement> existingElements)
+    private IReadOnlyList<PhotoAlbum> SortPhotoAlbum(OrderAlbumFields orderAlbumField)
     {
-        var existingElementsPairs = existingElements
-            .Select(element =>
-            {
-                var path = element
-                    .QuerySelector("a")
-                    .GetAttribute("href");
+        var dateAlbumPairs = _album.ChildAlbums
+            .Select(album => (
+                Date: album.MediaFiles
+                    .OrderBy(mediaFile => mediaFile.CreatedAt)
+                    .FirstOrDefault()
+                    ?.CreatedAt,
+                Album: album));
+        var orderedDateAlbumPairs = orderAlbumField == OrderAlbumFields.Date
+            ? dateAlbumPairs
+                .OrderBy(obj => obj.Date)
+                .ThenBy(obj => obj.Album.Name)
+            : dateAlbumPairs
+                .OrderBy(obj => obj.Album.Name);
 
-                var albumName = string.IsNullOrWhiteSpace(path)
-                    ? null
-                    : Path.GetDirectoryName(path);
-
-                return (AlbumName: albumName, Element: element);
-            })
-            .Where(obj => obj.AlbumName != null)
-            .DistinctBy(obj => obj.AlbumName)
-            .ToDictionary(obj => obj.AlbumName, obj => obj.Element);
-        var albumPairs = albums
-            .ToDictionary(album => album.Name, album => album);
-
-        var albumsToAdd = albumPairs
-            .Where(albumPair => !existingElementsPairs.ContainsKey(albumPair.Key))
-            .Select(albumPair => albumPair.Value)
+        return orderedDateAlbumPairs
+            .Select(obj => obj.Album)
             .ToArray();
-        var elementsToRemove = existingElementsPairs
-            .Where(existingElementsPair => !albumPairs.ContainsKey(existingElementsPair.Key))
-            .Select(existingElementsPair => existingElementsPair.Value)
-            .ToArray();
-
-        var elementsToUpdate = existingElementsPairs
-            .Where(element => !elementsToRemove.Contains(element.Value))
-            .Where(element => !albumsToAdd.Any(album => album.Name == element.Key))
-            .Where(element => albumPairs.ContainsKey(element.Key))
-            .Select(element => (Element: element.Value, Album: albumPairs[element.Key]))
-            .ToArray();
-
-        return new(albumsToAdd, elementsToRemove, elementsToUpdate);
-    }
-
-    private void RemoveAlbumElements(IReadOnlyList<IElement> albumElements)
-    {
-        if (albumElements.Count == 0)
-            return;
-
-        // Remove albums that are no longer present
-        foreach (var element in albumElements)
-        {
-            element
-                .Closest(CardSelector)
-                ?.Remove();
-        }
-
-        var albumFolder = GetAlbumBlock();
-        if (albumFolder is null)
-            return;
-
-        if (albumFolder.QuerySelectorAll(AlbumSelector).Any())
-            return;
-
-        albumFolder
-            .Closest(GroupSelector)
-            ?.Remove();
-    }
-
-    private void UpdateAlbumElements(IReadOnlyList<(IElement Element, PhotoAlbum Album)> albumElements)
-    {
-        foreach (var albumElement in albumElements)
-        {
-            var fileCountElements = albumElement.Element.QuerySelector(".folder-meta");
-            if (fileCountElements is not null)
-            {
-                fileCountElements.InnerHtml = GetMediaFilesCountText(
-                    albumElement.Album.MediaFiles.Count);
-            }
-        }
-    }
-
-    private IElement? GetAlbumBlock()
-    {
-        return _galleryElement.QuerySelector(AlbumBlockSelector);
-    }
-    
-    public string CreateAlbumItemsHtml(IReadOnlyList<PhotoAlbum> photoAlbums)
-    {
-        if (photoAlbums.Count == 0)
-            return string.Empty;
-
-        var itemsBuilder = new StringBuilder();
-        foreach (var photoAlbum in photoAlbums)
-        {
-            itemsBuilder.AppendLine(
-                _indexHtmlSettings.AlbumItem
-                    .Replace("{{albumPath}}", $"{photoAlbum.Name}/{PhotoAlbum.IndexHtmlFileName}")
-                    .Replace("{{albumName}}", photoAlbum.Name))
-                    .Replace("{{filesCount}}", GetMediaFilesCountText(photoAlbum.MediaFiles.Count));
-        }
-
-        return itemsBuilder.ToString();
-    }
-    
-    private static string GetMediaFilesCountText(int count)
-    {
-        return $"({count})";
     }
 
     private void BuildMediaFiles()

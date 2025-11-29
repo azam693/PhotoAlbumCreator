@@ -1,6 +1,7 @@
 using PhotoAlbumCreator.AlbumLibraries;
 using PhotoAlbumCreator.AlbumLibraries.Requests;
 using PhotoAlbumCreator.Common;
+using PhotoAlbumCreator.Common.Extensions;
 using PhotoAlbumCreator.Common.Settings;
 using PhotoAlbumCreator.PhotoAlbums;
 using PhotoAlbumCreator.PhotoAlbums.Requests;
@@ -26,6 +27,8 @@ internal static class Program
     public const string ForceParameterShort = "-f";
     public const string GlobalParameter = "--global";
     public const string GlobalParameterShort = "-g";
+    public const string OrderAlbumParameter = "--order-album";
+    public const string OrderAlbumParameterShort = "-oa";
 
     public static int Main(string[] args)
     {
@@ -73,15 +76,25 @@ internal static class Program
                     photoAlbumService.Create(CreatePhotoAlbumRequest());
                     break;
                 case FillPhotoAlbum:
-                    bool isGlobal = HasParameter(GlobalParameter)
+                    var isGlobal = HasParameter(GlobalParameter)
                         || HasParameter(GlobalParameterShort);
+                    var orderAlbumValue = GetParamterValue(OrderAlbumParameter)
+                        ?? GetParamterValue(OrderAlbumParameterShort);
+                    var orderAlbumField = OrderAlbumFields.Date;
+                    if (!string.IsNullOrWhiteSpace(orderAlbumValue)
+                        && !Enum.TryParse(orderAlbumValue, true, out orderAlbumField))
+                    {
+                        Console.WriteLine(
+                            localization.UnrecognizedOrderAlbumField.Fmt(orderAlbumValue));
+                    }
+
                     if (isGlobal)
                     {
-                        photoAlbumService.FillGlobal(FillGlobalPhotoAlbumRequest());
+                        photoAlbumService.FillGlobal(FillGlobalPhotoAlbumRequest(orderAlbumField));
                     }
                     else
                     {
-                        photoAlbumService.Fill(FillPhotoAlbumRequest());
+                        photoAlbumService.Fill(FillPhotoAlbumRequest(orderAlbumField));
                     }
                     break;
                 case Compress:
@@ -125,19 +138,19 @@ internal static class Program
             return new CreatePhotoAlbumRequest(rootPath, albumName);
         }
 
-        FillPhotoAlbumRequest FillPhotoAlbumRequest()
+        FillPhotoAlbumRequest FillPhotoAlbumRequest(OrderAlbumFields orderAlbumField)
         {
             var rootPath = GetRootPath();
             var albumName = GetAlbumName();
 
-            return new FillPhotoAlbumRequest(rootPath, albumName);
+            return new FillPhotoAlbumRequest(rootPath, albumName, orderAlbumField);
         }
 
-        FillGlobalPhotoAlbumRequest FillGlobalPhotoAlbumRequest()
+        FillGlobalPhotoAlbumRequest FillGlobalPhotoAlbumRequest(OrderAlbumFields orderAlbumField)
         {
             var rootPath = GetRootPath();
 
-            return new FillGlobalPhotoAlbumRequest(rootPath);
+            return new FillGlobalPhotoAlbumRequest(rootPath, orderAlbumField);
         }
 
         CompressVideoRequest CompressVideoRequest()
@@ -192,7 +205,29 @@ internal static class Program
         bool HasParameter(string parameter)
         {
             return commands.Any(
-                command => string.Equals(command, parameter, StringComparison.OrdinalIgnoreCase));
+                command => IsEquivalentParameters(command, parameter));
+        }
+
+        string? GetParamterValue(string parameter)
+        {
+            for (var i = 0; i < commands.Length; i++)
+            {
+                if (!IsEquivalentParameters(commands[i], parameter))
+                    continue;
+
+                var nextIndex = i + 1;
+                if (nextIndex >= commands.Length)
+                    continue;
+
+                return commands[nextIndex];
+            }
+
+            return null;
+        }
+
+        bool IsEquivalentParameters(string parameter1, string parameter2)
+        {
+            return string.Equals(parameter1, parameter2, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

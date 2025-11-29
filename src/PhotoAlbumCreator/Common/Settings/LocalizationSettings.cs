@@ -61,4 +61,6 @@ public sealed record LocalizationSettings
     public string StartingCompression { get; init; } = "StartingCompression";
 
     public string VideoFilesCompressed { get; init; } = "VideoFilesCompressed";
+
+    public string UnrecognizedOrderAlbumField { get; init; } = "UnrecognizedOrderAlbumField";
 }

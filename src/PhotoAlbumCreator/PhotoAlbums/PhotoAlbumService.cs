@@ -45,7 +45,8 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         var (mediaFiles, photoAlbums) = LoadAlbumResources(
             albumLibrary,
             request.Name,
-            maxResourceDeep: 2);
+            maxResourceDeep: 2,
+            checkIndexHtml: false);
         var photoAlbum = albumLibrary.CreatePhotoAlbum(request.Name, mediaFiles, photoAlbums);
 
         // Create Readme file
@@ -79,7 +80,7 @@ public sealed class PhotoAlbumService : AlbumServiceBase
             var childAlbums = LoadChildPhotoAlbums(
                 albumLibrary,
                 album.FullPath,
-                maxResourceDeep: 1,
+                maxResourceDeep: 2,
                 checkIndexHtml: false);
             foreach (var childAlbum in childAlbums)
             {
@@ -93,7 +94,10 @@ public sealed class PhotoAlbumService : AlbumServiceBase
 
         foreach (var album in albums)
         {
-            Fill(new FillPhotoAlbumRequest(albumLibrary.RootPath, album.RelativePath));
+            Fill(new FillPhotoAlbumRequest(
+                albumLibrary.RootPath,
+                album.RelativePath,
+                request.OrderAlbumField));
         }
     }
 
@@ -113,7 +117,7 @@ public sealed class PhotoAlbumService : AlbumServiceBase
         RefreshStyles(indexHtmlPage, photoAlbum);
         RefreshScripts(indexHtmlPage, photoAlbum);
 
-        indexHtmlPage.BuildGallery();
+        indexHtmlPage.BuildGallery(request.OrderAlbumField);
 
         File.Delete(photoAlbum.IndexHtmlPath);
         File.WriteAllText(photoAlbum.IndexHtmlPath, indexHtmlPage.BuildHtml(), new UTF8Encoding(false));
@@ -201,7 +205,12 @@ public sealed class PhotoAlbumService : AlbumServiceBase
             .Select(relativePath =>
             {
                 var (mediaFiles, photoAlbums) = maxResourceDeep > 0
-                    ? LoadAlbumResources(albumLibrary, relativePath, maxResourceDeep: 1)
+                    ? LoadAlbumResources(
+                        albumLibrary,
+                        relativePath,
+                        maxResourceDeep: 1,
+                        checkFilesPresence,
+                        checkIndexHtml)
                     : (Array.Empty<MediaFile>(), Array.Empty<PhotoAlbum>());
 
                 return new PhotoAlbum(albumLibrary, relativePath, mediaFiles, photoAlbums);
@@ -220,10 +229,14 @@ public sealed class PhotoAlbumService : AlbumServiceBase
                     if (!Path.Exists(photoAlbum.FilesDirectoryPath))
                         return false;
 
-                    return Directory
-                        .EnumerateFiles(photoAlbum.FilesDirectoryPath)
-                        .Where(filePath => PhotoAlbum.IsSupportedFile(filePath))
-                        .Any();
+                    var hasMediaFiles = HasAnyMediaFile(photoAlbum.FilesDirectoryPath);
+                    if (!hasMediaFiles)
+                    {
+                        hasMediaFiles = photoAlbum.ChildAlbums
+                            .Any(album => HasAnyMediaFile(album.FilesDirectoryPath));
+                    }
+
+                    return hasMediaFiles;
                 }
                 else
                 {
@@ -231,6 +244,17 @@ public sealed class PhotoAlbumService : AlbumServiceBase
                 }
             })
             .ToArray();
+    }
+
+    private static bool HasAnyMediaFile(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        return Directory
+            .EnumerateFiles(path)
+            .Where(filePath => PhotoAlbum.IsSupportedFile(filePath))
+            .Any();
     }
 
     private static IReadOnlyList<MediaFile> LoadMediaFiles(string path)

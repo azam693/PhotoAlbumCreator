@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Фотоальбом — {{title}}</title>
-  <link rel="preload" href="../System/styles.css" as="style">
+  <title>{{title}}</title>
   <link rel="stylesheet" href="../System/styles.css">
   <script defer src="../System/script.js"></script>
 </head>
@@ -17,11 +16,7 @@
   </header>
 
   <div class="container">
-    <section id="gallery">
-      
-      {{galleryItems}}
-
-    </section>
+    <section id="gallery"></section>
   </div>
 
   <section id="lightbox" class="lightbox" aria-hidden="true" aria-label="{{mediaView}}">
